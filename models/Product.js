@@ -1,13 +1,5 @@
 const db = require('../db');
 
-/**
- * Product model - function-based MVC style
- * Exports an object that provides methods for basic CRUD operations
- * against the `products` table.
- * Methods accept parameters required for the SQL operation and a
- * callback(err, result) which will be called after the operation.
- */
-
 const Product = {
 	// Get all products
 	getAllProducts: function (callback) {

@@ -39,7 +39,7 @@ const ProductController = {
     });
   },
 
-  // ⭐ Show edit form – this is what updateProduct.ejs needs
+  // Show edit form
   showEditForm(req, res) {
     const id = req.params.id;
 

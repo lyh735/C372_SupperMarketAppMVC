@@ -1,17 +1,6 @@
 // models/Invoice.js
 const db = require('../db');
 
-/**
- * Invoice model - function-based MVC style
- *
- * Tables assumed:
- *  - invoices(invoiceId, userId, totalAmount, createdAt)
- *  - invoiceitems(invoiceItemId, invoiceId, productId, quantity, price)
- *  - products(id, productName, price, image, ...)
- *
- * All functions are callback-based: fn(params..., callback(err, results))
- */
-
 const Invoice = {
   /**
    * Create an invoice and its items inside a transaction.

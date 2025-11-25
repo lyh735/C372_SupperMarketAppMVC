@@ -46,6 +46,52 @@
                 <p><b>Product Quantity:</b><br> <%= product.quantity %></p>
                 <p><b>Price:</b><br> $<%= product.price.toFixed(2) %></p> 
             </div>
+
+            <!-- Feedback Section -->
+            <hr>
+            <h3>Feedback & Reviews</h3>
+
+            <% if (allFeedback && allFeedback.length > 0) { %>
+                <div class="alert alert-info">
+                    <strong>All Feedback for this Product:</strong>
+                </div>
+
+                <% allFeedback.forEach(fb => { %>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Rating: <%= fb.rating %>/5</h5>
+                            <p class="card-text"><%= fb.comment || 'No comment' %></p>
+                            <small class="text-muted">Submitted: <%= new Date(fb.createdAt).toLocaleDateString() %></small>
+                            <% if (fb.updatedAt && new Date(fb.updatedAt).getTime() !== new Date(fb.createdAt).getTime()) { %>
+                                <small class="text-muted"> | Updated: <%= new Date(fb.updatedAt).toLocaleDateString() %></small>
+                            <% } %>
+
+                            <% /* If this feedback belongs to the logged-in user, show controls */ %>
+                            <% const currentUserId = user.userId || user.id || user.user_id; %>
+                            <% if (fb.userId === currentUserId) { %>
+                                <div class="mt-2">
+                                    <a href="/feedback/edit/<%= fb.id %>?productId=<%= product.id %>" class="btn btn-warning btn-sm">Edit Feedback</a>
+                                    <form action="/feedback/delete/<%= fb.id %>" method="POST" style="display:inline;">
+                                        <input type="hidden" name="productId" value="<%= product.id %>">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this feedback?');">Delete Feedback</button>
+                                    </form>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <p>No feedback yet for this product.</p>
+            <% } %>
+
+            <% /* If user hasn't left feedback yet, show link to leave one */ %>
+            <% if (!userFeedback) { %>
+                <div class="alert alert-info mt-3">
+                    <p>You haven't left feedback for this product yet.</p>
+                </div>
+                <a href="/feedback/product/<%= product.id %>/submit" class="btn btn-success">Leave Feedback</a>
+            <% } %>
+
         <% } else { %>
             <p>No product found.</p>
         <% } %>

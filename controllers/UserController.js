@@ -3,17 +3,44 @@ const crypto = require('crypto');
 const User = require('../models/User');
 
 const UserController = {
+  // Show registration form
   showRegister(req, res) {
-    const formData = req.flash('formData')[0] || {};
-    const errors = req.flash('error') || [];
-    res.render('register', { formData, errors, user: req.session.user });
-  },
+  const formData = req.flash('formData')[0] || {};
+  const errors = req.flash('error') || [];
+  const messages = req.flash('success') || [];
 
+  res.render('register', {
+    formData,
+    errors,
+    messages,
+    user: req.session.user
+  });
+},
+
+  // Handle registration
   registerUser(req, res) {
-    const { username, email, password, address, contact, role } = req.body;
+    const {
+      username,
+      email,
+      password,
+      confirmPassword,
+      address,
+      contact,
+      role
+    } = req.body;
 
-    // basic validation is already done by validateRegistration in app.js
-    const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
+    // Extra safety: ensure passwords match (even though validateRegistration should also check)
+    if (!password || !confirmPassword || password !== confirmPassword) {
+      req.flash('error', 'Passwords do not match');
+      req.flash('formData', req.body);
+      return res.redirect('/register');
+    }
+
+    // Hash the password with SHA1
+    const hashedPassword = crypto
+      .createHash('sha1')
+      .update(password)
+      .digest('hex');
 
     const newUser = {
       username,
@@ -37,13 +64,20 @@ const UserController = {
     });
   },
 
+  // Show login form
   showLogin(req, res) {
     const formData = req.flash('formData')[0] || {};
     const errors = req.flash('error') || [];
     const messages = req.flash('success') || [];
-    res.render('login', { formData, errors, messages, user: req.session.user });
+    res.render('login', {
+      formData,
+      errors,
+      messages,
+      user: req.session.user
+    });
   },
 
+  // Handle login
   loginUser(req, res) {
     const { email, password } = req.body;
 
@@ -52,13 +86,17 @@ const UserController = {
         console.error('Error fetching user:', err);
         return res.status(500).send('Server error');
       }
+
       if (!user) {
         req.flash('error', 'Invalid email or password');
         req.flash('formData', req.body);
         return res.redirect('/login');
       }
 
-      const hashedInput = crypto.createHash('sha1').update(password).digest('hex');
+      const hashedInput = crypto
+        .createHash('sha1')
+        .update(password)
+        .digest('hex');
 
       if (hashedInput !== user.password) {
         req.flash('error', 'Invalid email or password');
@@ -66,7 +104,7 @@ const UserController = {
         return res.redirect('/login');
       }
 
-      // ✅ session userId is now correct
+      // Store user in session
       req.session.user = {
         userId: user.userId,
         username: user.username,
@@ -84,6 +122,7 @@ const UserController = {
     });
   },
 
+  // Logout
   logoutUser(req, res) {
     req.session.destroy(() => {
       res.redirect('/');

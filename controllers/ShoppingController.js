@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const CartItems = require('../models/CartItem');
+const Feedback = require('../models/Feedback');
 
 /**
  * ShoppingController - controller for shopping-related routes
@@ -33,7 +34,27 @@ const ShoppingController = {
 
       const user = req.session ? req.session.user : null;
       product.id = product.id || product.productId;
-      return res.render('product', { product, user });
+      // Fetch all feedback for this product and also user's feedback (if logged in)
+      Feedback.getByProductId(product.id, (fbErr, allFeedback) => {
+        if (fbErr) {
+          console.error('Error fetching feedback for product:', fbErr);
+          // still render the product page without feedback
+          return res.render('product', { product, user, allFeedback: [], userFeedback: null });
+        }
+
+        if (!user) {
+          return res.render('product', { product, user, allFeedback: allFeedback || [], userFeedback: null });
+        }
+
+        const userId = user.userId || user.id || user.user_id;
+        Feedback.getByUserAndProduct(userId, product.id, (uFbErr, userFeedback) => {
+          if (uFbErr) {
+            console.error('Error fetching user feedback:', uFbErr);
+            return res.render('product', { product, user, allFeedback: allFeedback || [], userFeedback: null });
+          }
+          return res.render('product', { product, user, allFeedback: allFeedback || [], userFeedback: userFeedback || null });
+        });
+      });
     });
   },
 

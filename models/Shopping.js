@@ -1,11 +1,5 @@
 const db = require('../db');
 
-/**
- * Shopping model - function-based MVC style
- * Provides read operations against the `products` table for shopping views.
- * All methods are callback-based: fn(params..., callback(err, result)).
- */
-
 const Shopping = {
   // Get all products (used by shopping listing)
   getAllProducts: function (callback) {

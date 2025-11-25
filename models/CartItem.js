@@ -1,19 +1,6 @@
 // models/CartItem.js
 const db = require('../db');
 
-/**
- * CartItems model
- *
- * Table: cartitems
- *  - cartItemId (PK, AUTO_INCREMENT)
- *  - userId
- *  - productId
- *  - quantity
- *
- * IMPORTANT: to allow quantity to merge properly, the table should have:
- *   UNIQUE KEY unique_user_product (userId, productId)
- */
-
 const CartItems = {
   // Get all cart items for a user, joined with product info
   getByUserId(userId, callback) {

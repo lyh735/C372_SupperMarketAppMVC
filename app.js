@@ -7,6 +7,7 @@ const InvoiceController = require('./controllers/InvoiceController');
 const ProductController = require('./controllers/ProductController');
 const ShoppingController = require('./controllers/ShoppingController');
 const UserController = require('./controllers/UserController');
+const FeedbackController = require('./controllers/FeedbackController');
 const { checkAuthenticated, checkAuthorised } = require('./middleware');
 
 const app = express();
@@ -38,12 +39,17 @@ app.use(flash());
 
 // Simple registration validator used by the register route
 const validateRegistration = (req, res, next) => {
-  const { username, email, password, address, contact, role } = req.body;
-  if (!username || !email || !password || !address || !contact || !role) {
+  const { username, email, password, confirmPassword, address, contact, role } = req.body;
+  if (!username || !email || !password || !confirmPassword || !address || !contact || !role) {
     return res.status(400).send('All fields are required.');
   }
   if (password.length < 6) {
     req.flash('error', 'Password should be at least 6 or more characters long');
+    req.flash('formData', req.body);
+    return res.redirect('/register');
+  }
+  if (password !== confirmPassword) {
+    req.flash('error', 'Passwords do not match');
     req.flash('formData', req.body);
     return res.redirect('/register');
   }
@@ -80,6 +86,29 @@ app.post('/cart/checkout', checkAuthenticated, CartItemsController.checkout);
 // Invoice routes
 app.get('/invoices', checkAuthenticated, InvoiceController.listUserInvoices);
 app.get('/invoice/:id', checkAuthenticated, InvoiceController.showInvoice);
+
+// Feedback routes
+app.get('/feedback', checkAuthenticated, FeedbackController.listAllProducts);
+app.get('/feedback/product/:id', checkAuthenticated, (req, res) => {
+  FeedbackController.getProductDetails(req, res);
+});
+app.get('/feedback/product/:id/submit', checkAuthenticated, (req, res) => {
+  req.method = 'GET';
+  FeedbackController.submitFeedback(req, res);
+});
+app.post('/feedback/product/:id', checkAuthenticated, (req, res) => {
+  req.method = 'POST';
+  FeedbackController.submitFeedback(req, res);
+});
+app.get('/feedback/edit/:feedbackId', checkAuthenticated, (req, res) => {
+  req.method = 'GET';
+  FeedbackController.editFeedback(req, res);
+});
+app.post('/feedback/edit/:feedbackId', checkAuthenticated, (req, res) => {
+  req.method = 'POST';
+  FeedbackController.editFeedback(req, res);
+});
+app.post('/feedback/delete/:feedbackId', checkAuthenticated, FeedbackController.deleteFeedback);
 
 app.get('/logout', UserController.logoutUser);
 
