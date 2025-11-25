@@ -1,0 +1,62 @@
+const db = require('../db');
+
+/**
+ * Product model - function-based MVC style
+ * Exports an object that provides methods for basic CRUD operations
+ * against the `products` table.
+ * Methods accept parameters required for the SQL operation and a
+ * callback(err, result) which will be called after the operation.
+ */
+
+const Product = {
+	// Get all products
+	getAllProducts: function (callback) {
+		const sql = `SELECT id AS id, productName, quantity, price, image FROM products`;
+		db.query(sql, (err, results) => {
+			if (err) return callback(err);
+			return callback(null, results);
+		});
+	},
+
+	// Get a single product by its id
+	getProductById: function (id, callback) {
+		const sql = `SELECT id AS id, productName, quantity, price, image FROM products WHERE id = ?`;
+		db.query(sql, [id], (err, results) => {
+			if (err) return callback(err);
+			const product = results && results.length ? results[0] : null;
+			return callback(null, product);
+		});
+	},
+
+	// Add a new product (expects an object with keys: productName, quantity, price, image)
+	addProduct: function (product, callback) {
+		const sql = `INSERT INTO products (productName, quantity, price, image) VALUES (?, ?, ?, ?)`;
+		const params = [product.productName, product.quantity, product.price, product.image];
+		db.query(sql, params, (err, result) => {
+			if (err) return callback(err);
+			// return newly created id and affectedRows info
+			return callback(null, { insertId: result.insertId, affectedRows: result.affectedRows });
+		});
+	},
+
+	// Update an existing product by id
+	updateProduct: function (id, product, callback) {
+		const sql = `UPDATE products SET productName = ?, quantity = ?, price = ?, image = ? WHERE id = ?`;
+		const params = [product.productName, product.quantity, product.price, product.image, id];
+		db.query(sql, params, (err, result) => {
+			if (err) return callback(err);
+			return callback(null, { affectedRows: result.affectedRows, changedRows: result.changedRows });
+		});
+	},
+
+	// Delete a product by id
+	deleteProduct: function (id, callback) {
+		const sql = `DELETE FROM products WHERE id = ?`;
+		db.query(sql, [id], (err, result) => {
+			if (err) return callback(err);
+			return callback(null, { affectedRows: result.affectedRows });
+		});
+	}
+};
+
+module.exports = Product;
