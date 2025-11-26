@@ -27,7 +27,8 @@ const ProductController = {
       productName: req.body.name,
       quantity: req.body.quantity,
       price: req.body.price,
-      image: req.file ? req.file.filename : null
+      image: req.file ? req.file.filename : null,
+      category: req.body.category
     };
 
     Product.addProduct(product, (err) => {
@@ -73,7 +74,8 @@ const ProductController = {
       productName: req.body.name,
       quantity: req.body.quantity,
       price: req.body.price,
-      image: req.file ? req.file.filename : req.body.currentImage
+      image: req.file ? req.file.filename : req.body.currentImage,
+      category: req.body.category
     };
 
     Product.updateProduct(id, updatedProduct, (err) => {

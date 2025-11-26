@@ -8,7 +8,7 @@ const Feedback = require('../models/Feedback');
  */
 
 const ShoppingController = {
-  // List all products for shopping
+  // List all products for shopping with search and filter
   listAll: (req, res) => {
     Product.getAllProducts((err, products) => {
       if (err) {
@@ -18,7 +18,101 @@ const ShoppingController = {
 
       const user = req.session ? req.session.user : null;
       const normalized = (products || []).map(p => ({ ...p, id: p.id || p.productId }));
-      return res.render('shopping', { products: normalized, user });
+
+      // Get filter parameters from query string
+      const searchQuery = (req.query.search || '').toLowerCase().trim();
+      const priceSort = req.query.priceSort || ''; // 'asc', 'desc'
+      const categoryFilter = req.query.category || ''; // specific category or empty for all
+      const ratingSort = req.query.ratingSort || ''; // 'highest', 'lowest', 'no-rating'
+
+      // Extract unique categories
+      const categories = [...new Set(normalized.map(p => p.category).filter(Boolean))].sort();
+
+      // Apply filters and search
+      let filtered = normalized.filter(product => {
+        // Search by product name
+        if (searchQuery && !product.productName.toLowerCase().includes(searchQuery)) {
+          return false;
+        }
+
+        // Filter by category
+        if (categoryFilter && product.category !== categoryFilter) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Fetch feedback ratings for each product for sorting
+      const feedbackPromises = filtered.map(product => 
+        new Promise(resolve => {
+          Feedback.getByProductId(product.id, (err, feedbacks) => {
+            if (err || !feedbacks || feedbacks.length === 0) {
+              product.avgRating = null;
+              product.ratingCount = 0;
+              return resolve();
+            }
+            const avgRating = feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length;
+            product.avgRating = avgRating;
+            product.ratingCount = feedbacks.length;
+            resolve();
+          });
+        })
+      );
+
+      Promise.all(feedbackPromises)
+        .then(() => {
+          // Sort by price
+          if (priceSort === 'asc') {
+            filtered.sort((a, b) => a.price - b.price);
+          } else if (priceSort === 'desc') {
+            filtered.sort((a, b) => b.price - a.price);
+          }
+
+          // Sort by rating
+          if (ratingSort === 'highest') {
+            filtered.sort((a, b) => {
+              const aRating = a.avgRating || 0;
+              const bRating = b.avgRating || 0;
+              return bRating - aRating;
+            });
+          } else if (ratingSort === 'lowest') {
+            filtered.sort((a, b) => {
+              const aRating = a.avgRating || 0;
+              const bRating = b.avgRating || 0;
+              return aRating - bRating;
+            });
+          } else if (ratingSort === 'no-rating') {
+            filtered.sort((a, b) => {
+              const aHasRating = a.avgRating !== null && a.avgRating !== undefined;
+              const bHasRating = b.avgRating !== null && b.avgRating !== undefined;
+              if (aHasRating === bHasRating) return 0;
+              return aHasRating ? 1 : -1;
+            });
+          }
+
+          return res.render('shopping', { 
+            products: filtered, 
+            user,
+            categories,
+            searchQuery,
+            priceSort,
+            categoryFilter,
+            ratingSort
+          });
+        })
+        .catch((e) => {
+          console.error('Error fetching feedback:', e);
+          return res.render('shopping', { 
+            products: filtered, 
+            user,
+            categories,
+            searchQuery,
+            priceSort,
+            categoryFilter,
+            ratingSort
+          });
+        });
     });
   },
 

@@ -35,54 +35,129 @@
     <br>
     <div class="text-center"><h2>Products from Supermarket</h2></div>
     <br>
-    <table class="table table-hover small text-center">
-      <thead>
-          <tr>
-            <th width="100">Product Name</th>
-            <th width="100">Product Image</th>
-            <th width="50">Quantity</th>
-            <th width="50">Price</th>
-            <th width="50">Quantity</th>
-            <th width="50">Buy</th>
-          </tr>
-      </thead>
-      <tbody>
-        <% for(let i=0; i < products.length; i++) { %>
-          <tr>
-            <td><a href="/product/<%= products[i].id %>" ><%= products[i].productName %></a></td>
-            <td><img src = "images/<%= products[i].image %>" width="20%"></td>
-            <td><%= products[i].quantity %></td>
-            <td>$<%= products[i].price.toFixed(2) %></td>
-            <!-- <td>
-              <select id="role" name="role" class="form-control" >
-                <option value="1" selected >1</option>
-                <option value="2" >2</option>
-                <option value="3" >3</option>
-                <option value="4" >4</option>
-                <option value="5" >5</option>
-              </select>
-            </td> -->
-            <!-- Buy Link -->
-            <!-- <td><a href="/buyProduct/<%#= products[i].id %>" class="btn btn-primary mt-3">Buy</a></td> -->
-            <td>
-              <select class="form-control" onchange="document.getElementById('quantity-<%= products[i].id %>').value = this.value">
-                <% for (let q = 1; q <= 5; q++) { %>
-                  <option value="<%= q %>"><%= q %></option>
-                <% } %>
-              </select>
-            </td>
 
-            <td>
-                <form action="/add-to-cart/<%= products[i].id %>" method="POST">
-                  <input type="hidden" name="quantity" id="quantity-<%= products[i].id %>" value="1">
-                  <button type="submit" class="btn btn-primary mt-3">Buy</button>
-                </form>
-            </td>
+    <!-- Search and Filter Panel -->
+    <div class="card mb-4 p-4 bg-light">
+      <h5 class="mb-3">Search & Filter</h5>
+      <form method="GET" action="/shopping" class="row g-3">
+        
+        <!-- Search by Product Name -->
+        <div class="col-md-3">
+          <label for="search" class="form-label">Search Product</label>
+          <input type="text" class="form-control" id="search" name="search" placeholder="Product name..." value="<%= searchQuery %>">
+        </div>
 
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+        <!-- Filter by Category -->
+        <div class="col-md-3">
+          <label for="category" class="form-label">Category</label>
+          <select class="form-select" id="category" name="category">
+            <option value="">All Categories</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat %>" <% if (categoryFilter === cat) { %>selected<% } %>>
+                <%= cat %>
+              </option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Sort by Price -->
+        <div class="col-md-3">
+          <label for="priceSort" class="form-label">Price</label>
+          <select class="form-select" id="priceSort" name="priceSort">
+            <option value="">Default</option>
+            <option value="asc" <% if (priceSort === 'asc') { %>selected<% } %>>Lowest to Highest</option>
+            <option value="desc" <% if (priceSort === 'desc') { %>selected<% } %>>Highest to Lowest</option>
+          </select>
+        </div>
+
+        <!-- Sort by Rating -->
+        <div class="col-md-3">
+          <label for="ratingSort" class="form-label">Rating</label>
+          <select class="form-select" id="ratingSort" name="ratingSort">
+            <option value="">Default</option>
+            <option value="highest" <% if (ratingSort === 'highest') { %>selected<% } %>>Highest Rating First</option>
+            <option value="lowest" <% if (ratingSort === 'lowest') { %>selected<% } %>>Lowest Rating First</option>
+            <option value="no-rating" <% if (ratingSort === 'no-rating') { %>selected<% } %>>No Rating First</option>
+          </select>
+        </div>
+
+        <!-- Search Button -->
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Apply Filters</button>
+          <a href="/shopping" class="btn btn-secondary">Clear Filters</a>
+        </div>
+      </form>
+    </div>
+
+    <% 
+      // Group products by category
+      const groupedByCategory = {};
+      products.forEach(product => {
+        const category = product.category || 'Uncategorized';
+        if (!groupedByCategory[category]) {
+          groupedByCategory[category] = [];
+        }
+        groupedByCategory[category].push(product);
+      });
+
+      // Get sorted category names
+      const displayCategories = Object.keys(groupedByCategory).sort();
+    %>
+
+    <% if (products.length === 0) { %>
+      <div class="alert alert-info text-center">No products found matching your search or filters.</div>
+    <% } else { %>
+      <% displayCategories.forEach(category => { %>
+        <div class="mb-5">
+          <h3 class="mb-3"><span class="badge bg-primary"><%= category %></span></h3>
+          <table class="table table-hover small text-center">
+            <thead class="table-light">
+              <tr>
+                <th width="100">Product Name</th>
+                <th width="100">Product Image</th>
+                <th width="50">Quantity</th>
+                <th width="50">Price</th>
+                <th width="80">Avg Rating</th>
+                <th width="50">Qty</th>
+                <th width="50">Buy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% groupedByCategory[category].forEach(product => { %>
+                <tr>
+                  <td><a href="/product/<%= product.id %>" ><%= product.productName %></a></td>
+                  <td><img src = "images/<%= product.image %>" width="20%"></td>
+                  <td><%= product.quantity %></td>
+                  <td>$<%= product.price.toFixed(2) %></td>
+                  <td>
+                    <% if (product.avgRating !== null && product.avgRating !== undefined) { %>
+                      <span class="badge bg-warning"><%= product.avgRating.toFixed(1) %>/5</span>
+                      <small class="d-block text-muted">(<%= product.ratingCount %> reviews)</small>
+                    <% } else { %>
+                      <span class="badge bg-secondary">No Rating</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <select class="form-control" onchange="document.getElementById('quantity-<%= product.id %>').value = this.value">
+                      <% for (let q = 1; q <= 5; q++) { %>
+                        <option value="<%= q %>"><%= q %></option>
+                      <% } %>
+                    </select>
+                  </td>
+                  <td>
+                    <form action="/add-to-cart/<%= product.id %>" method="POST">
+                      <input type="hidden" name="quantity" id="quantity-<%= product.id %>" value="1">
+                      <button type="submit" class="btn btn-primary btn-sm mt-2">Buy</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+    <% } %>
+
   </div>
 </body>
 </html>
