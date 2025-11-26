@@ -5,17 +5,17 @@ const User = require('../models/User');
 const UserController = {
   // Show registration form
   showRegister(req, res) {
-  const formData = req.flash('formData')[0] || {};
-  const errors = req.flash('error') || [];
-  const messages = req.flash('success') || [];
+    const formData = req.flash('formData')[0] || {};
+    const errors = req.flash('error') || [];
+    const messages = req.flash('success') || [];
 
-  res.render('register', {
-    formData,
-    errors,
-    messages,
-    user: req.session.user
-  });
-},
+    res.render('register', {
+      formData,
+      errors,
+      messages,
+      user: req.session.user
+    });
+  },
 
   // Handle registration
   registerUser(req, res) {
@@ -29,38 +29,62 @@ const UserController = {
       role
     } = req.body;
 
-    // Extra safety: ensure passwords match (even though validateRegistration should also check)
+    // 1) Check passwords match
     if (!password || !confirmPassword || password !== confirmPassword) {
       req.flash('error', 'Passwords do not match');
       req.flash('formData', req.body);
       return res.redirect('/register');
     }
 
-    // Hash the password with SHA1
-    const hashedPassword = crypto
-      .createHash('sha1')
-      .update(password)
-      .digest('hex');
-
-    const newUser = {
-      username,
-      email,
-      password: hashedPassword,
-      address,
-      contact,
-      role: role || 'user'
-    };
-
-    User.create(newUser, (err) => {
+    // 2) Check if email already exists
+    User.getByEmail(email, (err, existingUser) => {
       if (err) {
-        console.error('Error creating user:', err);
-        req.flash('error', 'Unable to register user');
+        console.error('Error checking existing email:', err);
+        req.flash('error', 'Server error while checking email');
         req.flash('formData', req.body);
         return res.redirect('/register');
       }
 
-      req.flash('success', 'Registration successful. Please log in.');
-      res.redirect('/login');
+      if (existingUser) {
+        // Email is already used by another account
+        req.flash('error', 'This email is already registered. Please log in instead.');
+        req.flash('formData', req.body);
+        return res.redirect('/register');
+      }
+
+      // 3) Email is free → hash password and create user
+      const hashedPassword = crypto
+        .createHash('sha1')
+        .update(password)
+        .digest('hex');
+
+      const newUser = {
+        username,
+        email,
+        password: hashedPassword,
+        address,
+        contact,
+        role: role || 'user'
+      };
+
+      User.create(newUser, (createErr) => {
+        if (createErr) {
+          // Extra safety: if DB has UNIQUE(email) and still hits duplicate
+          if (createErr.code === 'ER_DUP_ENTRY') {
+            req.flash('error', 'This email is already registered. Please log in instead.');
+            req.flash('formData', req.body);
+            return res.redirect('/register');
+          }
+
+          console.error('Error creating user:', createErr);
+          req.flash('error', 'Unable to register user');
+          req.flash('formData', req.body);
+          return res.redirect('/register');
+        }
+
+        req.flash('success', 'Registration successful. Please log in.');
+        return res.redirect('/login');
+      });
     });
   },
 
