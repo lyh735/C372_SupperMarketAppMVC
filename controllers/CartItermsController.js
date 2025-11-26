@@ -141,7 +141,7 @@ const CartItemsController = {
     });
   },
 
-  // Checkout: create invoice + clear cart + redirect to invoice page
+  // Checkout: create invoice + decrement inventory + clear cart + redirect to invoice page
   checkout(req, res) {
     const userId = req.session.user.userId;
 
@@ -170,12 +170,32 @@ const CartItemsController = {
           return res.redirect('/cart');
         }
 
-        CartItems.clear(userId, (clearErr) => {
-          if (clearErr) {
-            console.error('Error clearing cart after checkout:', clearErr);
-          }
-          req.flash('success', 'Checkout successful');
-          res.redirect('/invoice/' + result.invoiceId);
+        // Decrement product quantities for each item in cart
+        const decrementPromises = items.map(item =>
+          new Promise((resolve) => {
+            Products.decrementQuantity(item.productId, item.quantity, (decErr) => {
+              if (decErr) {
+                console.error(`Error decrementing quantity for product ${item.productId}:`, decErr);
+              }
+              resolve();
+            });
+          })
+        );
+
+        Promise.all(decrementPromises).then(() => {
+          CartItems.clear(userId, (clearErr) => {
+            if (clearErr) {
+              console.error('Error clearing cart after checkout:', clearErr);
+            }
+            req.flash('success', 'Checkout successful');
+            res.redirect('/invoice/' + result.invoiceId);
+          });
+        }).catch((e) => {
+          console.error('Error during inventory update:', e);
+          req.flash('success', 'Checkout successful (inventory update pending)');
+          CartItems.clear(userId, () => {
+            res.redirect('/invoice/' + result.invoiceId);
+          });
         });
       });
     });

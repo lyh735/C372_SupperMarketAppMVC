@@ -118,7 +118,6 @@
                 <th width="50">Quantity</th>
                 <th width="50">Price</th>
                 <th width="80">Avg Rating</th>
-                <th width="50">Qty</th>
                 <th width="50">Buy</th>
               </tr>
             </thead>
@@ -130,25 +129,45 @@
                   <td><%= product.quantity %></td>
                   <td>$<%= product.price.toFixed(2) %></td>
                   <td>
-                    <% if (product.avgRating !== null && product.avgRating !== undefined) { %>
-                      <span class="badge bg-warning"><%= product.avgRating.toFixed(1) %>/5</span>
-                      <small class="d-block text-muted">(<%= product.ratingCount %> reviews)</small>
+                    <% if (product.avgRating !== null && product.avgRating !== undefined) { 
+                        let badgeColor = 'bg-danger';
+
+                        if (product.avgRating > 3.0) {
+                          badgeColor = 'bg-success';
+                        } else if (product.avgRating > 1.0) {
+                          badgeColor = 'bg-warning';
+                        }
+                    %>
+                      <span class="badge <%= badgeColor %>">
+                        <%= product.avgRating.toFixed(1) %>/5
+                      </span>
+                      <small class="d-block text-muted">
+                        (<%= product.ratingCount %> reviews)
+                      </small>
                     <% } else { %>
                       <span class="badge bg-secondary">No Rating</span>
                     <% } %>
                   </td>
                   <td>
-                    <select class="form-control" onchange="document.getElementById('quantity-<%= product.id %>').value = this.value">
-                      <% for (let q = 1; q <= 5; q++) { %>
-                        <option value="<%= q %>"><%= q %></option>
-                      <% } %>
-                    </select>
+                    <% if (product.quantity > 0) { %>
+                      <select class="form-control" onchange="document.getElementById('quantity-<%= product.id %>').value = this.value">
+                        <% for (let q = 1; q <= Math.min(product.quantity, 5); q++) { %>
+                          <option value="<%= q %>"><%= q %></option>
+                        <% } %>
+                      </select>
+                    <% } else { %>
+                      <span class="text-danger">Out of Stock</span>
+                    <% } %>
                   </td>
                   <td>
-                    <form action="/add-to-cart/<%= product.id %>" method="POST">
-                      <input type="hidden" name="quantity" id="quantity-<%= product.id %>" value="1">
-                      <button type="submit" class="btn btn-primary btn-sm mt-2">Buy</button>
-                    </form>
+                    <% if (product.quantity > 0) { %>
+                      <form action="/add-to-cart/<%= product.id %>" method="POST">
+                        <input type="hidden" name="quantity" id="quantity-<%= product.id %>" value="1">
+                        <button type="submit" class="btn btn-primary btn-sm mt-2">Buy</button>
+                      </form>
+                    <% } else { %>
+                      <button type="button" class="btn btn-secondary btn-sm mt-2" disabled>Out of Stock</button>
+                    <% } %>
                   </td>
                 </tr>
               <% }); %>

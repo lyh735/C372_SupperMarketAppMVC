@@ -163,6 +163,12 @@ const ShoppingController = {
     const productId = parseInt(req.params.id, 10);
     const qty = parseInt(req.body.quantity, 10) || 1;
 
+    // Validate quantity is positive
+    if (qty <= 0) {
+      req.flash('error', 'Quantity must be at least 1');
+      return res.redirect('/product/' + productId);
+    }
+
     Product.getProductById(productId, (err, product) => {
       if (err) {
         console.error('Error fetching product for cart:', err);
@@ -174,9 +180,15 @@ const ShoppingController = {
         return res.redirect('/shopping');
       }
 
+      // Validate requested quantity does not exceed available quantity
+      if (qty > product.quantity) {
+        req.flash('error', `Only ${product.quantity} units available`);
+        return res.redirect('/product/' + productId);
+      }
+
       // The CartItems model stores one row per added item. Add `qty` times or rely on a single insert.
       // We'll insert a single row and rely on display logic to count duplicates if multiple inserts exist.
-      CartItems.add(userId, productId, (addErr) => {
+      CartItems.add(userId, productId, qty, (addErr) => {
         if (addErr) {
           console.error('Error adding to cart:', addErr);
           req.flash('error', 'Could not add to cart');

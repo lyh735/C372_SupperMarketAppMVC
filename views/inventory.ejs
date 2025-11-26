@@ -45,10 +45,17 @@
       </thead>
       <tbody>
         <% for(let i=0; i < products.length; i++) { %>
-          <tr>
+          <tr <% if (products[i].quantity < 10) { %>class="table-warning"<% } %>>
             <td><a href="/product/<%= products[i].id %>" ><%= products[i].productName %></a></td>
             <td><img src = "images/<%= products[i].image %>" width="20%"></td>
-            <td><%= products[i].quantity %></td>
+            <td>
+              <% if (products[i].quantity < 10) { %>
+                <span class="badge bg-warning text-dark"><%= products[i].quantity %></span>
+                <small class="d-block text-warning">⚠️ Low Stock</small>
+              <% } else { %>
+                <span class="badge bg-success"><%= products[i].quantity %></span>
+              <% } %>
+            </td>
             <td>$<%= products[i].price.toFixed(2) %></td>
             <!-- Edit Link -->
             <td><a href="/updateProduct/<%= products[i].id %>">Edit</a></td>

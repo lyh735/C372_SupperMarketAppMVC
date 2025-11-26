@@ -48,6 +48,18 @@ const Product = {
 			if (err) return callback(err);
 			return callback(null, { affectedRows: result.affectedRows });
 		});
+	},
+
+	// Decrement product quantity by a specified amount
+	decrementQuantity: function (id, quantity, callback) {
+		const sql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
+		db.query(sql, [quantity, id, quantity], (err, result) => {
+			if (err) return callback(err);
+			if (result.affectedRows === 0) {
+				return callback(new Error('Insufficient inventory'));
+			}
+			return callback(null, { affectedRows: result.affectedRows });
+		});
 	}
 };
 
