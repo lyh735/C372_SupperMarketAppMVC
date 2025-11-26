@@ -2,13 +2,31 @@ const db = require('../db');
 
 const Shopping = {
   // Get all products (used by shopping listing)
-  getAllProducts: function (callback) {
-    const sql = `SELECT id AS productId, productName, quantity, price, image FROM products`;
-    db.query(sql, (err, results) => {
-      if (err) return callback(err);
-      return callback(null, results);
-    });
-  },
+
+  getAllProducts(callback) {
+    const sql = `
+      SELECT 
+        p.id,                        
+        p.productName,
+        p.quantity,
+        p.price,
+        p.image,
+        p.category,
+        ROUND(AVG(f.rating), 1) AS avgRating,
+        COUNT(f.id)            AS ratingCount
+        FROM products p
+        LEFT JOIN feedback f
+        ON f.productId = p.id      
+        GROUP BY 
+        p.id, p.productName, p.quantity, p.price, p.image, p.category
+        ORDER BY p.productName;
+      `;
+
+      db.query(sql, (err, results) => {
+        if (err) return callback(err);
+        callback(null, results);
+      });
+    },
 
   // Get a single product by id (basic)
   getProductById: function (id, callback) {
