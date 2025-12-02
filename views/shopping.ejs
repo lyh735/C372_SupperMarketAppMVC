@@ -7,6 +7,28 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <title>Supermarket App</title>
+  <script>
+    // Validate quantity input doesn't exceed stock level
+    function validateQuantity(productId, maxStock) {
+      const input = document.getElementById('qty-' + productId);
+      const quantity = parseInt(input.value, 10);
+
+      if (isNaN(quantity) || quantity < 1) {
+        alert('Please enter a valid quantity (minimum 1)');
+        input.focus();
+        return false;
+      }
+
+      if (quantity > maxStock) {
+        alert(`You can only purchase up to ${maxStock} units of this product`);
+        input.value = maxStock;
+        input.focus();
+        return false;
+      }
+
+      return true;
+    }
+  </script>
 </head>
 <body>
   <!-- Navbar -->
@@ -182,14 +204,21 @@
                     <!-- Add to cart / Out of stock -->
                     <div class="mt-auto">
                       <% if (product.quantity > 0) { %>
-                        <form action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex flex-column gap-2">
+                        <form action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex flex-column gap-2" onsubmit="return validateQuantity(<%= product.id %>, <%= product.quantity %>)">
                           <div>
-                            <label class="form-label mb-1 small">Quantity</label>
-                            <select class="form-select form-select-sm" name="quantity">
-                              <% for (let q = 1; q <= Math.min(product.quantity, 5); q++) { %>
-                                <option value="<%= q %>"><%= q %></option>
-                              <% } %>
-                            </select>
+                            <label class="form-label mb-1 small">Quantity (Max: <%= product.quantity %>)</label>
+                            <input 
+                              type="number" 
+                              class="form-control form-control-sm" 
+                              name="quantity" 
+                              id="qty-<%= product.id %>" 
+                              value="1" 
+                              min="1" 
+                              max="<%= product.quantity %>" 
+                              required
+                              placeholder="Enter quantity"
+                            >
+                            <small class="text-muted d-block mt-1">Available: <%= product.quantity %> units</small>
                           </div>
                           <button type="submit" class="btn btn-primary btn-sm w-100">
                             Add to Cart

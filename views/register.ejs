@@ -144,25 +144,6 @@
         >
       </div>
 
-      <!-- Role -->
-      <div class="form-group mb-4">
-        <label for="role" class="form-label">Role:</label>
-        <select id="role" name="role" class="form-control" required>
-          <option 
-            value="user" 
-            <%= formData && formData.role === 'user' ? 'selected' : '' %>
-          >
-            User
-          </option>
-          <option 
-            value="admin" 
-            <%= formData && formData.role === 'admin' ? 'selected' : '' %>
-          >
-            Admin
-          </option>
-        </select>
-      </div>
-
       <button type="submit" class="btn btn-primary">Register</button>
     </form>
 

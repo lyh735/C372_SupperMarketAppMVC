@@ -15,19 +15,61 @@ const CartItemsController = {
         return res.status(500).send('Error retrieving cart');
       }
 
-      // Normalize to the structure used by cart.ejs
-      const cart = (rows || []).map(r => ({
-        productId: r.productId,
-        productName: r.productName,
-        price: r.price,
-        quantity: r.quantity,
-        image: r.image
-      }));
+      if (!rows || rows.length === 0) {
+        return res.render('cart', {
+          cart: [],
+          user: req.session.user
+        });
+      }
 
-      res.render('cart', {
-        cart,
-        user: req.session.user
-      });
+      // Fetch stock info for each product to include in cart
+      const productPromises = rows.map(r =>
+        new Promise((resolve) => {
+          Products.getProductById(r.productId, (pErr, product) => {
+            if (pErr || !product) {
+              return resolve({
+                productId: r.productId,
+                productName: r.productName,
+                price: r.price,
+                quantity: r.quantity,
+                image: r.image,
+                stock: 0
+              });
+            }
+            resolve({
+              productId: r.productId,
+              productName: r.productName,
+              price: r.price,
+              quantity: r.quantity,
+              image: r.image,
+              stock: product.quantity
+            });
+          });
+        })
+      );
+
+      Promise.all(productPromises)
+        .then(cart => {
+          res.render('cart', {
+            cart,
+            user: req.session.user
+          });
+        })
+        .catch((e) => {
+          console.error('Error fetching product stock:', e);
+          const cart = (rows || []).map(r => ({
+            productId: r.productId,
+            productName: r.productName,
+            price: r.price,
+            quantity: r.quantity,
+            image: r.image,
+            stock: 0
+          }));
+          res.render('cart', {
+            cart,
+            user: req.session.user
+          });
+        });
     });
   },
 
@@ -60,12 +102,41 @@ const CartItemsController = {
     const userId = req.session.user.userId;
     const productId = parseInt(req.body.productId, 10);
 
-    CartItems.add(userId, productId, 1, (err) => {
-      if (err) {
-        console.error('Error increasing cart quantity:', err);
-        req.flash('error', 'Could not update quantity');
+    // Check current product stock before increasing
+    Products.getProductById(productId, (err, product) => {
+      if (err || !product) {
+        req.flash('error', 'Product not found');
+        return res.redirect('/cart');
       }
-      res.redirect('/cart');
+
+      // Get current cart quantity for this product
+      CartItems.getByUserAndProduct(userId, productId, (cartErr, cartRow) => {
+        if (cartErr) {
+          console.error('Error reading cart item:', cartErr);
+          req.flash('error', 'Could not update quantity');
+          return res.redirect('/cart');
+        }
+
+        const currentCartQty = cartRow ? cartRow.quantity : 0;
+        const newQty = currentCartQty + 1;
+
+        // Check if new quantity exceeds available stock
+        if (newQty > product.quantity) {
+          req.flash('error', `Cannot exceed available stock. Only ${product.quantity} units available.`);
+          return res.redirect('/cart');
+        }
+
+        // Proceed with adding 1 to cart
+        CartItems.add(userId, productId, 1, (addErr) => {
+          if (addErr) {
+            console.error('Error increasing cart quantity:', addErr);
+            req.flash('error', 'Could not update quantity');
+          } else {
+            req.flash('success', 'Quantity updated');
+          }
+          res.redirect('/cart');
+        });
+      });
     });
   },
 
