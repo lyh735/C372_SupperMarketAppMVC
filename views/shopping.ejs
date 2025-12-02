@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <title>Supermarket App</title>
+
   <script>
     // Validate quantity input doesn't exceed stock level
     function validateQuantity(productId, maxStock) {
@@ -31,28 +32,29 @@
   </script>
 </head>
 <body>
+
   <!-- Navbar -->
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark"> 
-  <div class="container-fluid"> 
-    <a class="navbar-brand" href="/">Supermarket App</a> 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar"> 
-    <span class="navbar-toggler-icon"></span> 
-    </button> 
-      <div class="collapse navbar-collapse" id="collapsibleNavbar"> 
-        <ul class="navbar-nav"> 
-          <li class="nav-item"> 
-            <a class="nav-link" href="/cart">View Cart</a> 
-          </li> 
-          <li class="nav-item"> 
-            <a class="nav-link" href="/feedback">Leave Feedback</a> 
-          </li> 
-          <li class="nav-item"> 
-            <a class="nav-link" href="/logout">Logout</a> 
-          </li> 
-        </ul> 
-      </div> 
-  </div> 
-</nav>
+  <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Supermarket App</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="/cart">View Cart</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/feedback">Leave Feedback</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
   <!-- Main content -->
   <div class="container py-4">
@@ -69,7 +71,7 @@
     <div class="card mb-4 p-4 bg-light shadow-sm">
       <h5 class="mb-3">Search & Filter</h5>
       <form method="GET" action="/shopping" class="row g-3">
-        
+
         <!-- Search by Product Name -->
         <div class="col-md-3">
           <label for="search" class="form-label">Search Product</label>
@@ -87,7 +89,7 @@
           <label for="category" class="form-label">Category</label>
           <select class="form-select" id="category" name="category">
             <option value="">All Categories</option>
-            <% categories.forEach(cat => { %>
+            <% categories.forEach(function (cat) { %>
               <option value="<%= cat %>" <% if (categoryFilter === cat) { %>selected<% } %>>
                 <%= cat %>
               </option>
@@ -100,7 +102,7 @@
           <label for="priceSort" class="form-label">Price</label>
           <select class="form-select" id="priceSort" name="priceSort">
             <option value="">Default</option>
-            <option value="asc" <% if (priceSort === 'asc') { %>selected<% } %>>Lowest to Highest</option>
+            <option value="asc"  <% if (priceSort === 'asc')  { %>selected<% } %>>Lowest to Highest</option>
             <option value="desc" <% if (priceSort === 'desc') { %>selected<% } %>>Highest to Lowest</option>
           </select>
         </div>
@@ -110,13 +112,12 @@
           <label for="ratingSort" class="form-label">Rating</label>
           <select class="form-select" id="ratingSort" name="ratingSort">
             <option value="">Default</option>
-            <option value="highest" <% if (ratingSort === 'highest') { %>selected<% } %>>Highest Rating First</option>
-            <option value="lowest" <% if (ratingSort === 'lowest') { %>selected<% } %>>Lowest Rating First</option>
-            <option value="no-rating" <% if (ratingSort === 'no-rating') { %>selected<% } %>>No Rating First</option>
+            <option value="highest"  <% if (ratingSort === 'highest')  { %>selected<% } %>>Highest Rating First</option>
+            <option value="lowest"   <% if (ratingSort === 'lowest')   { %>selected<% } %>>Lowest Rating First</option>
+            <option value="no-rating"<% if (ratingSort === 'no-rating'){ %>selected<% } %>>No Rating First</option>
           </select>
         </div>
 
-        <!-- Search Button -->
         <div class="col-12">
           <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
           <a href="/shopping" class="btn btn-outline-secondary">Clear Filters</a>
@@ -127,7 +128,7 @@
     <% 
       // Group products by category
       const groupedByCategory = {};
-      products.forEach(product => {
+      (products || []).forEach(function (product) {
         const category = product.category || 'Uncategorized';
         if (!groupedByCategory[category]) {
           groupedByCategory[category] = [];
@@ -144,16 +145,29 @@
       </div>
     <% } else { %>
 
-      <% displayCategories.forEach(category => { %>
+      <% displayCategories.forEach(function (category) { %>
         <section class="mb-5">
           <h3 class="mb-3">
             <span class="badge bg-primary fs-6"><%= category %></span>
           </h3>
 
           <div class="row g-4">
-            <% groupedByCategory[category].forEach(product => { %>
+            <% groupedByCategory[category].forEach(function (product) { %>
+
+              <% 
+                // Pre-compute rating display values safely
+                const hasRating = product.avgRating !== null && product.avgRating !== undefined;
+                let badgeColor = 'bg-secondary';
+                if (hasRating) {
+                  if (product.avgRating > 3.0)      badgeColor = 'bg-success';
+                  else if (product.avgRating > 1.0) badgeColor = 'bg-warning';
+                  else                               badgeColor = 'bg-danger';
+                }
+              %>
+
               <div class="col-12 col-sm-6 col-md-4 col-lg-3">
                 <div class="card h-100 shadow-sm product-card">
+
                   <!-- Image -->
                   <div class="ratio ratio-4x3">
                     <a href="/product/<%= product.id %>">
@@ -166,10 +180,17 @@
 
                   <!-- Body -->
                   <div class="card-body d-flex flex-column">
-                    <h5 class="card-title mb-1">
-                      <a href="/product/<%= product.id %>" class="text-decoration-none text-dark">
+                    <h5 class="card-title mb-1 d-flex align-items-center">
+                      <a href="/product/<%= product.id %>" class="text-decoration-none text-dark me-2">
                         <%= product.productName %>
                       </a>
+                      <% if (hasRating) { %>
+                        <span class="badge <%= badgeColor %> small">
+                          <%= product.avgRating.toFixed(1) %>/5
+                        </span>
+                      <% } else { %>
+                        <span class="badge bg-secondary small">No Rating</span>
+                      <% } %>
                     </h5>
 
                     <p class="card-text mb-1 text-muted small">
@@ -180,16 +201,9 @@
                       <span class="fw-semibold text-success">$<%= product.price.toFixed(2) %></span>
                     </p>
 
-                    <!-- Rating -->
+                    <!-- Rating summary block -->
                     <div class="mb-3">
-                      <% if (product.avgRating !== null && product.avgRating !== undefined) { 
-                          let badgeColor = 'bg-danger';
-                          if (product.avgRating > 3.0) {
-                            badgeColor = 'bg-success';
-                          } else if (product.avgRating > 1.0) {
-                            badgeColor = 'bg-warning';
-                          }
-                      %>
+                      <% if (hasRating) { %>
                         <span class="badge <%= badgeColor %>">
                           <%= product.avgRating.toFixed(1) %>/5
                         </span>
@@ -204,22 +218,31 @@
                     <!-- Add to cart / Out of stock -->
                     <div class="mt-auto">
                       <% if (product.quantity > 0) { %>
-                        <form action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex flex-column gap-2" onsubmit="return validateQuantity(<%= product.id %>, <%= product.quantity %>)">
+                        <form
+                          action="/add-to-cart/<%= product.id %>"
+                          method="POST"
+                          class="d-flex flex-column gap-2"
+                          onsubmit="return validateQuantity(<%= product.id %>, <%= product.quantity %>)">
+
                           <div>
-                            <label class="form-label mb-1 small">Quantity (Max: <%= product.quantity %>)</label>
-                            <input 
-                              type="number" 
-                              class="form-control form-control-sm" 
-                              name="quantity" 
-                              id="qty-<%= product.id %>" 
-                              value="1" 
-                              min="1" 
-                              max="<%= product.quantity %>" 
+                            <label class="form-label mb-1 small">
+                              Quantity (Max: <%= product.quantity %>)
+                            </label>
+                            <input
+                              type="number"
+                              class="form-control form-control-sm"
+                              name="quantity"
+                              id="qty-<%= product.id %>"
+                              value="1"
+                              min="1"
+                              max="<%= product.quantity %>"
                               required
-                              placeholder="Enter quantity"
-                            >
-                            <small class="text-muted d-block mt-1">Available: <%= product.quantity %> units</small>
+                              placeholder="Enter quantity">
+                            <small class="text-muted d-block mt-1">
+                              Available: <%= product.quantity %> units
+                            </small>
                           </div>
+
                           <button type="submit" class="btn btn-primary btn-sm w-100">
                             Add to Cart
                           </button>
@@ -234,6 +257,7 @@
                   </div>
                 </div>
               </div>
+
             <% }); %>
           </div>
         </section>
