@@ -10,13 +10,20 @@ const Feedback = require('../models/Feedback');
 const ShoppingController = {
   // List all products for shopping with search and filter
   listAll: (req, res) => {
+    const user = req.session ? req.session.user : null;
+
+    // Prevent admins from accessing the shopping storefront
+    if (user && (user.role && String(user.role).toLowerCase() === 'admin')) {
+      req.flash('error', 'Admins cannot access the shopping storefront. Use the inventory management page.');
+      return res.redirect('/inventory');
+    }
+
     Product.getAllProducts((err, products) => {
       if (err) {
         console.error('Error fetching products:', err);
         return res.status(500).send('Error retrieving products');
       }
 
-      const user = req.session ? req.session.user : null;
       const normalized = (products || []).map(p => ({ ...p, id: p.id || p.productId }));
 
       // Get filter parameters from query string
@@ -154,12 +161,19 @@ const ShoppingController = {
 
   // Add a product to the user's cart
   addToCart: (req, res) => {
-    if (!req.session || !req.session.user) {
+    const user = req.session ? req.session.user : null;
+    if (!user) {
       req.flash('error', 'Please log in to add items to cart');
       return res.redirect('/login');
     }
 
-    const userId = req.session.user.userId || req.session.user.id;
+    // Admins are not allowed to purchase
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot purchase products. Use the inventory management page.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     const productId = parseInt(req.params.id, 10);
     const qty = parseInt(req.body.quantity, 10) || 1;
 
@@ -202,12 +216,19 @@ const ShoppingController = {
 
   // Display the current user's cart
   viewCart: (req, res) => {
-    if (!req.session || !req.session.user) {
+    const user = req.session ? req.session.user : null;
+    if (!user) {
       req.flash('error', 'Please log in to view cart');
       return res.redirect('/login');
     }
 
-    const userId = req.session.user.userId || req.session.user.id;
+    // Admins should not have a cart or perform purchases
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot use the shopping cart. Use the inventory page to manage products.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     CartItems.getByUserId(userId, (err, cartRows) => {
       if (err) {
         console.error('Error retrieving cart items:', err);

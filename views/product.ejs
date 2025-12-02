@@ -92,12 +92,16 @@
                 <p>No feedback yet for this product.</p>
             <% } %>
 
-            <% /* If user hasn't left feedback yet, show link to leave one */ %>
+            <% /* If user hasn't left feedback yet, show link to leave one (non-admin only) */ %>
             <% if (!userFeedback) { %>
-                <div class="alert alert-info mt-3">
-                    <p>You haven't left feedback for this product yet.</p>
-                </div>
-                <a href="/feedback/product/<%= product.id %>/submit" class="btn btn-success">Leave Feedback</a>
+                <% if (user && String(user.role).toLowerCase() === 'admin') { %>
+                    <div class="alert alert-secondary mt-3">Admins cannot submit feedback. See customer feedback above.</div>
+                <% } else { %>
+                    <div class="alert alert-info mt-3">
+                        <p>You haven't left feedback for this product yet.</p>
+                    </div>
+                    <a href="/feedback/product/<%= product.id %>/submit" class="btn btn-success">Leave Feedback</a>
+                <% } %>
             <% } %>
 
         <% } else { %>

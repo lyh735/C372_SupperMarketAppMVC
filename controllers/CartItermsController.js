@@ -7,7 +7,19 @@ const CartItemsController = {
 
   // Show cart page
   list(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to view cart');
+      return res.redirect('/login');
+    }
+
+    // Admins cannot access cart or perform purchases
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot use the shopping cart. Use the inventory page.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
 
     CartItems.getByUserId(userId, (err, rows) => {
       if (err) {
@@ -75,7 +87,17 @@ const CartItemsController = {
 
   // Add item to cart (from product page)
   add(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to add items to cart');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot purchase products. Use inventory to manage stock.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     const productId = parseInt(req.params.id, 10);
     const quantity = parseInt(req.body.quantity || '1', 10);
 
@@ -99,7 +121,17 @@ const CartItemsController = {
 
   // Increase quantity by 1 (for "+" button)
   increase(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to update cart');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot modify cart items. Use inventory instead.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     const productId = parseInt(req.body.productId, 10);
 
     // Check current product stock before increasing
@@ -142,7 +174,17 @@ const CartItemsController = {
 
   // Decrease quantity by 1 (for "-" button)
   decrease(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to update cart');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot modify cart items. Use inventory instead.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     const productId = parseInt(req.body.productId, 10);
 
     CartItems.getByUserAndProduct(userId, productId, (err, row) => {
@@ -183,7 +225,17 @@ const CartItemsController = {
 
   // Remove a product from cart (Remove button)
   remove(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to remove cart items');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot modify the cart. Use inventory instead.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
     const productId = parseInt(req.body.productId, 10);
 
     CartItems.remove(userId, productId, (err) => {
@@ -199,7 +251,17 @@ const CartItemsController = {
 
   // Clear entire cart
   clear(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to clear cart');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot modify the cart. Use inventory instead.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
 
     CartItems.clear(userId, (err) => {
       if (err) {
@@ -214,7 +276,17 @@ const CartItemsController = {
 
   // Checkout: create invoice + decrement inventory + clear cart + redirect to invoice page
   checkout(req, res) {
-    const userId = req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to checkout');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot perform checkouts. Use inventory management.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
 
     CartItems.getByUserId(userId, (err, cartRows) => {
       if (err) {

@@ -84,6 +84,13 @@ const FeedbackController = {
       return res.redirect('/login');
     }
 
+    // Admins are not allowed to submit feedback
+    const sessionUser = req.session.user;
+    if (sessionUser && sessionUser.role && String(sessionUser.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot submit feedback. View customer feedback on the product page.');
+      return res.redirect('/inventory');
+    }
+
     const productId = parseInt(req.params.id || req.body.productId, 10);
     const userId = req.session.user.userId || req.session.user.id || req.session.user.user_id;
 
@@ -132,6 +139,13 @@ const FeedbackController = {
     if (!req.session || !req.session.user) {
       req.flash && req.flash('error', 'Please log in');
       return res.redirect('/login');
+    }
+
+    // Admins should not be able to edit feedback
+    const sessionUser = req.session.user;
+    if (sessionUser && sessionUser.role && String(sessionUser.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot edit customer feedback.');
+      return res.redirect('/inventory');
     }
 
     const feedbackId = parseInt(req.params.feedbackId, 10);
@@ -194,6 +208,13 @@ const FeedbackController = {
     if (!req.session || !req.session.user) {
       req.flash && req.flash('error', 'Please log in');
       return res.redirect('/login');
+    }
+
+    // Admins should not delete customer feedback
+    const sessionUser = req.session.user;
+    if (sessionUser && sessionUser.role && String(sessionUser.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot delete customer feedback.');
+      return res.redirect('/inventory');
     }
 
     const feedbackId = parseInt(req.params.feedbackId, 10);

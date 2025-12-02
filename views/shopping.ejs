@@ -223,35 +223,41 @@
                     <!-- Add to cart / Out of stock -->
                     <div class="mt-auto">
                       <% if (product.quantity > 0) { %>
-                        <form
-                          action="/add-to-cart/<%= product.id %>"
-                          method="POST"
-                          class="d-flex flex-column gap-2"
-                          onsubmit="return validateQuantity(<%= product.id %>, <%= product.quantity %>)">
-
-                          <div>
-                            <label class="form-label mb-1 small">
-                              Quantity (Max: <%= product.quantity %>)
-                            </label>
-                            <input
-                              type="number"
-                              class="form-control form-control-sm"
-                              name="quantity"
-                              id="qty-<%= product.id %>"
-                              value="1"
-                              min="1"
-                              max="<%= product.quantity %>"
-                              required
-                              placeholder="Enter quantity">
-                            <small class="text-muted d-block mt-1">
-                              Available: <%= product.quantity %> units
-                            </small>
+                        <% if (user && String(user.role).toLowerCase() === 'admin') { %>
+                          <div class="alert alert-secondary small mb-2">
+                            Admins cannot purchase products. Manage stock in the <a href="/inventory">Inventory</a>.
                           </div>
+                        <% } else { %>
+                          <form
+                            action="/add-to-cart/<%= product.id %>"
+                            method="POST"
+                            class="d-flex flex-column gap-2"
+                            onsubmit="return validateQuantity(<%= product.id %>, <%= product.quantity %>)">
 
-                          <button type="submit" class="btn btn-primary btn-sm w-100">
-                            Add to Cart
-                          </button>
-                        </form>
+                            <div>
+                              <label class="form-label mb-1 small">
+                                Quantity (Max: <%= product.quantity %>)
+                              </label>
+                              <input
+                                type="number"
+                                class="form-control form-control-sm"
+                                name="quantity"
+                                id="qty-<%= product.id %>"
+                                value="1"
+                                min="1"
+                                max="<%= product.quantity %>"
+                                required
+                                placeholder="Enter quantity">
+                              <small class="text-muted d-block mt-1">
+                                Available: <%= product.quantity %> units
+                              </small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                              Add to Cart
+                            </button>
+                          </form>
+                        <% } %>
                       <% } else { %>
                         <span class="badge bg-danger d-block mb-2">Out of Stock</span>
                         <button type="button" class="btn btn-secondary btn-sm w-100" disabled>
