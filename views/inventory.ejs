@@ -28,44 +28,63 @@
       </div>
     </nav>
 
-  <div class="container">
+    <div class="container">
     <p>Welcome, <%= user.username %> (<%= user.role %>)</p>
     <br>
     <div class="text-center"><h2>Products from Supermarket App Database</h2></div>
     <br>
-    <table class="table table-hover small text-center">
-      <thead>
-          <tr>
-            <th width="100">Product Name</th>
-            <th width="100">Product Image</th>
-            <th width="50">Quantity</th>
-            <th width="50">Price</th>
-            <th width="50">Edit</th>
-            <th width="50">Delete</th>
-          </tr>
-      </thead>
-      <tbody>
-        <% for(let i=0; i < products.length; i++) { %>
-          <tr <% if (products[i].quantity < 10) { %>class="table-warning"<% } %>>
-            <td><a href="/product/<%= products[i].id %>" ><%= products[i].productName %></a></td>
-            <td><img src = "images/<%= products[i].image %>" width="20%"></td>
-            <td>
-              <% if (products[i].quantity < 10) { %>
-                <span class="badge bg-warning text-dark"><%= products[i].quantity %></span>
-                <small class="d-block text-warning">⚠️ Low Stock</small>
-              <% } else { %>
-                <span class="badge bg-success"><%= products[i].quantity %></span>
-              <% } %>
-            </td>
-            <td>$<%= products[i].price.toFixed(2) %></td>
-            <!-- Edit Link -->
-            <td><a href="/updateProduct/<%= products[i].id %>">Edit</a></td>
-            <!-- Delete Link -->
-            <td><a href="/deleteProduct/<%= products[i].id %>" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a></td>
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+
+    <% 
+      // Group products by category for admin view
+      const grouped = {};
+      (products || []).forEach(p => {
+        const cat = p.category && p.category.trim() ? p.category : 'Uncategorized';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(p);
+      });
+      const cats = Object.keys(grouped).sort();
+    %>
+
+    <% if (!products || products.length === 0) { %>
+      <div class="alert alert-info text-center">No products found.</div>
+    <% } else { %>
+      <% cats.forEach(cat => { %>
+        <section class="mb-4">
+          <h4 class="mb-2"><span class="badge bg-primary"><%= cat %></span></h4>
+          <table class="table table-hover small text-center">
+            <thead>
+              <tr>
+                <th width="200">Product Name</th>
+                <th width="150">Product Image</th>
+                <th width="80">Quantity</th>
+                <th width="80">Price</th>
+                <th width="80">Edit</th>
+                <th width="80">Delete</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% grouped[cat].forEach(prod => { %>
+                <tr <% if (prod.quantity < 10) { %>class="table-warning"<% } %>>
+                  <td><a href="/product/<%= prod.id %>"><%= prod.productName %></a></td>
+                  <td><img src="images/<%= prod.image %>" style="max-width:120px; height:auto;"></td>
+                  <td>
+                    <% if (prod.quantity < 10) { %>
+                      <span class="badge bg-warning text-dark"><%= prod.quantity %></span>
+                      <small class="d-block text-warning">⚠️ Low Stock</small>
+                    <% } else { %>
+                      <span class="badge bg-success"><%= prod.quantity %></span>
+                    <% } %>
+                  </td>
+                  <td>$<%= prod.price.toFixed(2) %></td>
+                  <td><a href="/updateProduct/<%= prod.id %>">Edit</a></td>
+                  <td><a href="/deleteProduct/<%= prod.id %>" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </section>
+      <% }); %>
+    <% } %>
   </div>
 </body>
 </html>

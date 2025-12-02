@@ -89,7 +89,7 @@
           <label for="category" class="form-label">Category</label>
           <select class="form-select" id="category" name="category">
             <option value="">All Categories</option>
-            <% categories.forEach(function (cat) { %>
+            <% (categories || []).forEach(function (cat) { %>
               <option value="<%= cat %>" <% if (categoryFilter === cat) { %>selected<% } %>>
                 <%= cat %>
               </option>
@@ -155,13 +155,16 @@
             <% groupedByCategory[category].forEach(function (product) { %>
 
               <% 
-                // Pre-compute rating display values safely
+                // Safely normalise numeric fields
+                const priceNum = Number(product.price || 0);
                 const hasRating = product.avgRating !== null && product.avgRating !== undefined;
+                const ratingNum = hasRating ? Number(product.avgRating) : 0;
+
                 let badgeColor = 'bg-secondary';
                 if (hasRating) {
-                  if (product.avgRating > 3.0)      badgeColor = 'bg-success';
-                  else if (product.avgRating > 1.0) badgeColor = 'bg-warning';
-                  else                               badgeColor = 'bg-danger';
+                  if (ratingNum > 3.0)      badgeColor = 'bg-success';
+                  else if (ratingNum > 1.0) badgeColor = 'bg-warning';
+                  else                      badgeColor = 'bg-danger';
                 }
               %>
 
@@ -186,7 +189,7 @@
                       </a>
                       <% if (hasRating) { %>
                         <span class="badge <%= badgeColor %> small">
-                          <%= product.avgRating.toFixed(1) %>/5
+                          <%= ratingNum.toFixed(1) %>/5
                         </span>
                       <% } else { %>
                         <span class="badge bg-secondary small">No Rating</span>
@@ -198,14 +201,16 @@
                     </p>
 
                     <p class="card-text mb-2">
-                      <span class="fw-semibold text-success">$<%= product.price.toFixed(2) %></span>
+                      <span class="fw-semibold text-success">
+                        $<%= priceNum.toFixed(2) %>
+                      </span>
                     </p>
 
                     <!-- Rating summary block -->
                     <div class="mb-3">
                       <% if (hasRating) { %>
                         <span class="badge <%= badgeColor %>">
-                          <%= product.avgRating.toFixed(1) %>/5
+                          <%= ratingNum.toFixed(1) %>/5
                         </span>
                         <small class="d-block text-muted">
                           (<%= product.ratingCount %> reviews)
