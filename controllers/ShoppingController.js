@@ -18,6 +18,10 @@ const ShoppingController = {
       return res.redirect('/inventory');
     }
 
+    // Ensure session arrays exist for history
+    req.session.recentSearches = req.session.recentSearches || [];
+    req.session.recentViews = req.session.recentViews || [];
+
     Product.getAllProducts((err, products) => {
       if (err) {
         console.error('Error fetching products:', err);
@@ -27,7 +31,9 @@ const ShoppingController = {
       const normalized = (products || []).map(p => ({ ...p, id: p.id || p.productId }));
 
       // Get filter parameters from query string
-      const searchQuery = (req.query.search || '').toLowerCase().trim();
+      const searchQueryRaw = (req.query.search || '').trim();
+      const searchQuery = searchQueryRaw; // preserve original for display
+      const searchQueryLower = searchQueryRaw.toLowerCase();
       const priceSort = req.query.priceSort || ''; // 'asc', 'desc'
       const categoryFilter = req.query.category || ''; // specific category or empty for all
       const ratingSort = req.query.ratingSort || ''; // 'highest', 'lowest', 'no-rating'
@@ -35,10 +41,18 @@ const ShoppingController = {
       // Extract unique categories
       const categories = [...new Set(normalized.map(p => p.category).filter(Boolean))].sort();
 
+      // Track non-empty search queries in session (keep uniqueness and limit)
+      if (searchQuery) {
+        const existingIndex = (req.session.recentSearches || []).findIndex(q => q.toLowerCase() === searchQuery.toLowerCase());
+        if (existingIndex !== -1) req.session.recentSearches.splice(existingIndex, 1);
+        req.session.recentSearches.unshift(searchQuery);
+        if (req.session.recentSearches.length > 5) req.session.recentSearches.pop();
+      }
+
       // Apply filters and search
       let filtered = normalized.filter(product => {
-        // Search by product name
-        if (searchQuery && !product.productName.toLowerCase().includes(searchQuery)) {
+        // Search by product name (case-insensitive)
+        if (searchQueryLower && !product.productName.toLowerCase().includes(searchQueryLower)) {
           return false;
         }
 
@@ -105,7 +119,9 @@ const ShoppingController = {
             searchQuery,
             priceSort,
             categoryFilter,
-            ratingSort
+            ratingSort,
+            recentSearches: req.session.recentSearches || [],
+            recentViews: req.session.recentViews || []
           });
         })
         .catch((e) => {
@@ -135,6 +151,16 @@ const ShoppingController = {
 
       const user = req.session ? req.session.user : null;
       product.id = product.id || product.productId;
+      // Track recently viewed products (keep unique, up to 5)
+      try {
+        req.session.recentViews = req.session.recentViews || [];
+        const existing = (req.session.recentViews || []).findIndex(v => v.id === product.id);
+        if (existing !== -1) req.session.recentViews.splice(existing, 1);
+        req.session.recentViews.unshift({ id: product.id, name: product.productName });
+        if (req.session.recentViews.length > 5) req.session.recentViews.pop();
+      } catch (e) {
+        // ignore session write errors
+      }
       // Fetch all feedback for this product and also user's feedback (if logged in)
       Feedback.getByProductId(product.id, (fbErr, allFeedback) => {
         if (fbErr) {

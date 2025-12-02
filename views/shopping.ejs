@@ -80,8 +80,26 @@
             class="form-control"
             id="search"
             name="search"
+            list="recent-searches"
             placeholder="Product name..."
             value="<%= searchQuery %>">
+
+          <!-- Datalist for recent searches (session-backed) -->
+          <datalist id="recent-searches">
+            <% (recentSearches || []).forEach(function(q) { %>
+              <option value="<%= q %>"></option>
+            <% }); %>
+          </datalist>
+
+          <!-- Quick recent searches as tags -->
+          <% if (recentSearches && recentSearches.length) { %>
+            <div class="mt-2 small">
+              Recent searches:
+              <% recentSearches.forEach(function(q, idx) { %>
+                <a href="/shopping?search=<%= encodeURIComponent(q) %>" class="badge bg-light text-decoration-none me-1"> <%= q %> </a>
+              <% }); %>
+            </div>
+          <% } %>
         </div>
 
         <!-- Filter by Category -->
@@ -273,6 +291,17 @@
           </div>
         </section>
       <% }); %>
+    <% } %>
+    <!-- Recently viewed products quick links -->
+    <% if (recentViews && recentViews.length) { %>
+      <div class="container mb-4">
+        <h5>Recently Viewed</h5>
+        <div>
+          <% recentViews.forEach(function(v) { %>
+            <a href="/product/<%= v.id %>" class="badge bg-outline-secondary me-2 mb-2"><%= v.name %></a>
+          <% }); %>
+        </div>
+      </div>
     <% } %>
   </div>
   <%- include('partials/footer') %>
