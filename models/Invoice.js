@@ -97,6 +97,49 @@ const Invoice = {
       if (err) return callback(err);
       return callback(null, results);
     });
+  },
+
+  /**
+   * Get the details (items) for a specific invoice ID.
+   * Returns rows: { productId, productName, quantity, price, lineTotal, image }
+   */
+  invoiceDetails(invoiceId, callback) {
+    const sql = `
+      SELECT
+        ii.productId,
+        p.productName,
+        ii.quantity,
+        ii.price,
+        (ii.quantity * ii.price) AS lineTotal,
+        p.image
+      FROM invoiceitems ii
+      JOIN products p ON ii.productId = p.id
+      WHERE ii.invoiceId = ?
+      ORDER BY p.productName
+    `;
+    db.query(sql, [invoiceId], (err, results) => {
+      if (err) return callback(err);
+      return callback(null, results);
+    });
+  },
+
+  /**
+   * Get a single invoice by ID (admin can view any invoice).
+   * Returns: { invoiceId, userId, totalAmount, createdAt }
+   */
+  getInvoiceById(invoiceId, callback) {
+    const sql = `
+      SELECT invoiceId, userId, totalAmount, createdAt
+      FROM invoices
+      WHERE invoiceId = ?
+    `;
+    db.query(sql, [invoiceId], (err, results) => {
+      if (err) return callback(err);
+      if (!results || !results.length) {
+        return callback(null, null);
+      }
+      return callback(null, results[0]);
+    });
   }
 };
 

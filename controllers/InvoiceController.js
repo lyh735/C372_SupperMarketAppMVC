@@ -44,7 +44,9 @@ const InvoiceController = {
 
   showInvoice(req, res) {
     const invoiceId = parseInt(req.params.id, 10);
-    const userId = req.session.user.id || req.session.user.userId;
+    const user = req.session ? req.session.user : null;
+    const userId = user ? (user.id || user.userId) : null;
+    const isAdmin = user && user.role && String(user.role).toLowerCase() === 'admin';
 
     Invoice.invoiceDetails(invoiceId, (err, items) => {
       if (err) {
@@ -52,22 +54,26 @@ const InvoiceController = {
         return res.status(500).send('Error loading invoice items');
       }
 
-      Invoice.invoiceOverview(userId, (err2, invoices) => {
+      Invoice.getInvoiceById(invoiceId, (err2, invoice) => {
         if (err2) {
-          console.error('Error loading invoice header:', err2);
+          console.error('Error loading invoice:', err2);
           return res.status(500).send('Error loading invoice');
         }
-
-        const invoice = (invoices || []).find(inv => inv.invoiceId == invoiceId);
 
         if (!invoice) {
           return res.status(404).send('Invoice not found');
         }
 
+        // Check authorization: admins can view any invoice, users can only view their own
+        if (!isAdmin && invoice.userId !== userId) {
+          req.flash('error', 'You do not have permission to view this invoice');
+          return res.redirect('/invoices');
+        }
+
         res.render('invoiceDetails', {
           invoice,
           items: items || [],
-          user: req.session.user
+          user
         });
       });
     });
