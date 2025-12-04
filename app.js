@@ -85,6 +85,7 @@ app.post('/cart/checkout', checkAuthenticated, CartItemsController.checkout);
 
 // Invoice routes
 app.get('/invoices', checkAuthenticated, InvoiceController.listUserInvoices);
+app.get('/all-invoices', checkAuthenticated, InvoiceController.listAllInvoices);
 app.get('/invoice/:id', checkAuthenticated, InvoiceController.showInvoice);
 
 // Feedback routes

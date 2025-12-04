@@ -1,8 +1,33 @@
 const Invoice = require('../models/Invoice');
 
 const InvoiceController = {
+  /**
+   * Admin: List all user invoices
+   */
+  listAllInvoices(req, res) {
+    const user = req.session ? req.session.user : null;
+    
+    // Only admins can view all invoices
+    if (!user || !user.role || String(user.role).toLowerCase() !== 'admin') {
+      req.flash('error', 'Only admins can view all purchase history');
+      return res.redirect('/');
+    }
+
+    Invoice.allInvoices((err, invoices) => {
+      if (err) {
+        console.error('Error loading all invoices:', err);
+        return res.status(500).send('Error loading invoices');
+      }
+
+      res.render('allInvoicesAdmin', {
+        invoices: invoices || [],
+        user
+      });
+    });
+  },
+
   listUserInvoices(req, res) {
-    const userId = req.session.user.userId;
+    const userId = req.session.user.id || req.session.user.userId;
 
     Invoice.invoiceOverview(userId, (err, invoices) => {
       if (err) {
@@ -19,7 +44,7 @@ const InvoiceController = {
 
   showInvoice(req, res) {
     const invoiceId = parseInt(req.params.id, 10);
-    const userId = req.session.user.userId;
+    const userId = req.session.user.id || req.session.user.userId;
 
     Invoice.invoiceDetails(invoiceId, (err, items) => {
       if (err) {

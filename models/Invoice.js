@@ -78,24 +78,22 @@ const Invoice = {
   },
 
   /**
-   * Get all items for a single invoice.
-   * Returns rows:
-   *  { productId, productName, quantity, price, lineTotal, image }
+   * Get all invoices for admin view (all users).
+   * Returns rows: { invoiceId, userId, username, createdAt, totalAmount }
    */
-  invoiceDetails(invoiceId, callback) {
+  allInvoices(callback) {
     const sql = `
       SELECT 
-        p.id AS productId,
-        p.productName,
-        ii.quantity,
-        ii.price,
-        (ii.quantity * ii.price) AS lineTotal,
-        p.image
-      FROM invoiceitems ii
-      JOIN products p ON ii.productId = p.id
-      WHERE ii.invoiceId = ?
+        i.invoiceId,
+        i.userId,
+        u.username,
+        i.createdAt,
+        i.totalAmount
+      FROM invoices i
+      JOIN users u ON i.userId = u.id
+      ORDER BY i.createdAt DESC
     `;
-    db.query(sql, [invoiceId], (err, results) => {
+    db.query(sql, [], (err, results) => {
       if (err) return callback(err);
       return callback(null, results);
     });
