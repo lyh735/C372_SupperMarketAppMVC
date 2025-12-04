@@ -292,17 +292,6 @@
         </section>
       <% }); %>
     <% } %>
-    <!-- Recently viewed products quick links -->
-    <% if (recentViews && recentViews.length) { %>
-      <div class="container mb-4">
-        <h5>Recently Viewed</h5>
-        <div>
-          <% recentViews.forEach(function(v) { %>
-            <a href="/product/<%= v.id %>" class="badge bg-outline-secondary me-2 mb-2"><%= v.name %></a>
-          <% }); %>
-        </div>
-      </div>
-    <% } %>
   </div>
   <%- include('partials/footer') %>
 </body>
