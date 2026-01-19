@@ -9,6 +9,7 @@ const ShoppingController = require('./controllers/ShoppingController');
 const UserController = require('./controllers/UserController');
 const FeedbackController = require('./controllers/FeedbackController');
 const { checkAuthenticated, checkAuthorised } = require('./middleware');
+const netsQr = require('./services/nets');
 
 const app = express();
 
@@ -162,6 +163,15 @@ app.get(
   ProductController.deleteProduct
 );
 
+// NETS QR route
+app.get("/", (req, res) => { res.render("shopping") })
+app.post('/generateNETSQR', netsQr.generateQrCode);
+app.get("/nets-qr/success", (req, res) => {
+    res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!' });
+});
+app.get("/nets-qr/fail", (req, res) => {
+    res.render('netsTxnFailStatus', { message: 'Transaction Failed. Please try again.' });
+})
 
 app.get('/addProduct', checkAuthenticated, checkAuthorised(['admin']), (req, res) => res.render('addProduct', { user: req.session.user }));
 app.post('/addProduct', checkAuthenticated, checkAuthorised(['admin']), upload.single('image'), ProductController.addProduct);
