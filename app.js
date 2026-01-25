@@ -10,6 +10,9 @@ const UserController = require('./controllers/UserController');
 const FeedbackController = require('./controllers/FeedbackController');
 const { checkAuthenticated, checkAuthorised } = require('./middleware');
 const netsQr = require('./services/nets');
+const CartItem = require('./models/CartItem');
+const Invoice = require('./models/Invoice');
+const Product = require('./models/Product');
 
 const app = express();
 
@@ -167,9 +170,70 @@ app.get(
 app.get("/", (req, res) => { res.render("shopping") })
 app.post('/generateNETSQR', netsQr.generateQrCode);
 app.get("/nets-qr/success", (req, res) => {
-    res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!' });
+    const user = req.session.user;
+    if (!user) {
+        req.flash('error', 'Session expired');
+        return res.redirect('/login');
+    }
+    const pendingCart = req.session.pendingCart;
+    const cartTotal = req.session.cartTotal;
+    if (!pendingCart || !cartTotal) {
+        req.flash('error', 'No pending payment');
+        return res.redirect('/cart');
+    }
+
+    const userId = user.userId || user.id;
+    const items = pendingCart.map(r => ({
+        productId: r.productId,
+        quantity: r.quantity,
+        price: r.price
+    }));
+
+    Invoice.createInvoice(userId, items, (invErr, result) => {
+        if (invErr) {
+            console.error('Error creating invoice:', invErr);
+            req.flash('error', 'Could not complete checkout');
+            return res.redirect('/cart');
+        }
+
+        // Decrement product quantities for each item in cart
+        const decrementPromises = items.map(item =>
+            new Promise((resolve) => {
+                Product.decrementQuantity(item.productId, item.quantity, (decErr) => {
+                    if (decErr) {
+                        console.error(`Error decrementing quantity for product ${item.productId}:`, decErr);
+                    }
+                    resolve();
+                });
+            })
+        );
+
+        Promise.all(decrementPromises).then(() => {
+            CartItem.clear(userId, (clearErr) => {
+                if (clearErr) {
+                    console.error('Error clearing cart after checkout:', clearErr);
+                }
+                // Clear session
+                delete req.session.pendingCart;
+                delete req.session.cartTotal;
+                req.flash('success', 'Checkout successful');
+                res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+            });
+        }).catch((e) => {
+            console.error('Error during inventory update:', e);
+            CartItem.clear(userId, () => {
+                delete req.session.pendingCart;
+                delete req.session.cartTotal;
+                req.flash('success', 'Checkout successful (inventory update pending)');
+                res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+            });
+        });
+    });
 });
 app.get("/nets-qr/fail", (req, res) => {
+    // Clear pending cart on failure
+    delete req.session.pendingCart;
+    delete req.session.cartTotal;
     res.render('netsTxnFailStatus', { message: 'Transaction Failed. Please try again.' });
 })
 

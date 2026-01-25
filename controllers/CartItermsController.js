@@ -274,7 +274,7 @@ const CartItemsController = {
     });
   },
 
-  // Checkout: create invoice + decrement inventory + clear cart + redirect to invoice page
+  // Checkout: calculate total and generate QR code for payment
   checkout(req, res) {
     const user = req.session ? req.session.user : null;
     if (!user) {
@@ -300,47 +300,20 @@ const CartItemsController = {
         return res.redirect('/cart');
       }
 
-      const items = cartRows.map(r => ({
-        productId: r.productId,
-        quantity: r.quantity,
-        price: r.price
-      }));
-
-      Invoice.createInvoice(userId, items, (invErr, result) => {
-        if (invErr) {
-          console.error('Error creating invoice:', invErr);
-          req.flash('error', 'Could not complete checkout');
-          return res.redirect('/cart');
-        }
-
-        // Decrement product quantities for each item in cart
-        const decrementPromises = items.map(item =>
-          new Promise((resolve) => {
-            Products.decrementQuantity(item.productId, item.quantity, (decErr) => {
-              if (decErr) {
-                console.error(`Error decrementing quantity for product ${item.productId}:`, decErr);
-              }
-              resolve();
-            });
-          })
-        );
-
-        Promise.all(decrementPromises).then(() => {
-          CartItems.clear(userId, (clearErr) => {
-            if (clearErr) {
-              console.error('Error clearing cart after checkout:', clearErr);
-            }
-            req.flash('success', 'Checkout successful');
-            res.redirect('/invoice/' + result.invoiceId);
-          });
-        }).catch((e) => {
-          console.error('Error during inventory update:', e);
-          req.flash('success', 'Checkout successful (inventory update pending)');
-          CartItems.clear(userId, () => {
-            res.redirect('/invoice/' + result.invoiceId);
-          });
-        });
+      // Calculate total
+      let total = 0;
+      cartRows.forEach(item => {
+        total += item.price * item.quantity;
       });
+
+      // Store cart in session for later processing after payment
+      req.session.pendingCart = cartRows;
+      req.session.cartTotal = total;
+
+      // Now, generate QR code
+      const netsQr = require('../services/nets');
+      req.body.cartTotal = total.toFixed(2); // Ensure it's a string with 2 decimals
+      netsQr.generateQrCode(req, res);
     });
   }
 };
