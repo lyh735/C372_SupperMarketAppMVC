@@ -10,6 +10,7 @@ const UserController = require('./controllers/UserController');
 const FeedbackController = require('./controllers/FeedbackController');
 const { checkAuthenticated, checkAuthorised } = require('./middleware');
 const netsQr = require('./services/nets');
+const paypal = require('./services/paypal');
 const CartItem = require('./models/CartItem');
 const Invoice = require('./models/Invoice');
 const Product = require('./models/Product');
@@ -86,6 +87,130 @@ app.post('/cart/decrease', checkAuthenticated, CartItemsController.decrease);
 app.post('/cart/remove', checkAuthenticated, CartItemsController.remove);
 app.post('/cart/clear', checkAuthenticated, CartItemsController.clear);
 app.post('/cart/checkout', checkAuthenticated, CartItemsController.checkout);
+
+// PayPal routes
+app.post('/paypal/checkout', checkAuthenticated, async (req, res) => {
+  const user = req.session.user;
+  if (user.role && String(user.role).toLowerCase() === 'admin') {
+    req.flash('error', 'Admins cannot perform checkouts.');
+    return res.redirect('/inventory');
+  }
+
+  const userId = user.userId || user.id;
+
+  CartItem.getByUserId(userId, (err, cartRows) => {
+    if (err) {
+      console.error('Error fetching cart for checkout:', err);
+      req.flash('error', 'Server error during checkout');
+      return res.redirect('/cart');
+    }
+
+    if (!cartRows || !cartRows.length) {
+      req.flash('error', 'Your cart is empty');
+      return res.redirect('/cart');
+    }
+
+    // Calculate total
+    let total = 0;
+    cartRows.forEach(item => {
+      total += item.price * item.quantity;
+    });
+
+    // Store cart in session
+    req.session.pendingCart = cartRows;
+    req.session.cartTotal = total;
+
+    // Create PayPal order
+    paypal.createOrder(total.toFixed(2)).then(order => {
+      req.session.paypalOrderId = order.id;
+      const approvalUrl = order.links.find(link => link.rel === 'approve').href;
+      res.redirect(approvalUrl);
+    }).catch(err => {
+      console.error('Error creating PayPal order:', err);
+      req.flash('error', 'Error creating PayPal order');
+      res.redirect('/cart');
+    });
+  });
+});
+
+app.get('/paypal/success', (req, res) => {
+  const orderId = req.session.paypalOrderId;
+  if (!orderId) {
+    req.flash('error', 'No PayPal order found');
+    return res.redirect('/cart');
+  }
+
+  paypal.captureOrder(orderId).then(capture => {
+    if (capture.status === 'COMPLETED') {
+      // Process like NETS success
+      const user = req.session.user;
+      const userId = user.userId || user.id;
+      const items = req.session.pendingCart.map(r => ({
+        productId: r.productId,
+        quantity: r.quantity,
+        price: r.price
+      }));
+
+      Invoice.createInvoice(userId, items, (invErr, result) => {
+        if (invErr) {
+          console.error('Error creating invoice:', invErr);
+          req.flash('error', 'Could not complete checkout');
+          return res.redirect('/cart');
+        }
+
+        // Decrement quantities
+        const decrementPromises = items.map(item =>
+          new Promise((resolve) => {
+            Product.decrementQuantity(item.productId, item.quantity, (decErr) => {
+              if (decErr) {
+                console.error(`Error decrementing quantity for product ${item.productId}:`, decErr);
+              }
+              resolve();
+            });
+          })
+        );
+
+        Promise.all(decrementPromises).then(() => {
+          CartItem.clear(userId, (clearErr) => {
+            if (clearErr) {
+              console.error('Error clearing cart after checkout:', clearErr);
+            }
+            // Clear session
+            delete req.session.pendingCart;
+            delete req.session.cartTotal;
+            delete req.session.paypalOrderId;
+            req.flash('success', 'Checkout successful');
+            res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+          });
+        }).catch((e) => {
+          console.error('Error during inventory update:', e);
+          CartItem.clear(userId, () => {
+            delete req.session.pendingCart;
+            delete req.session.cartTotal;
+            delete req.session.paypalOrderId;
+            req.flash('success', 'Checkout successful (inventory update pending)');
+            res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+          });
+        });
+      });
+    } else {
+      req.flash('error', 'Payment not completed');
+      res.redirect('/paypal/cancel');
+    }
+  }).catch(err => {
+    console.error('Error capturing PayPal order:', err);
+    req.flash('error', 'Error processing payment');
+    res.redirect('/paypal/cancel');
+  });
+});
+
+app.get('/paypal/cancel', (req, res) => {
+  delete req.session.pendingCart;
+  delete req.session.cartTotal;
+  delete req.session.paypalOrderId;
+  req.flash('error', 'Payment cancelled');
+  res.render('netsTxnFailStatus', { message: 'Transaction Failed. Please try again.' });
+});
 
 // Invoice routes
 app.get('/invoices', checkAuthenticated, InvoiceController.listUserInvoices);
