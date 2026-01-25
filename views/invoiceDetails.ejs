@@ -25,6 +25,14 @@
     <h2>Invoice #<%= invoice.invoiceId %></h2>
     <p><strong>Date:</strong> <%= invoice.createdAt %></p>
     <p><strong>Total Amount:</strong> $<%= Number(invoice.totalAmount).toFixed(2) %></p>
+    <p><strong>Payment Method:</strong> <%= invoice.paymentMethod %></p>
+    <p><strong>Payment Status:</strong> <%= invoice.paymentStatus %></p>
+    <% if (invoice.paymentRef) { %>
+      <p><strong>Payment Reference:</strong> <%= invoice.paymentRef %></p>
+    <% } %>
+    <% if (invoice.paidAt) { %>
+      <p><strong>Paid At:</strong> <%= invoice.paidAt %></p>
+    <% } %>
 
     <h4 class="mt-4">Items</h4>
 

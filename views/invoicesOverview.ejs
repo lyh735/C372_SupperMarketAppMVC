@@ -34,6 +34,8 @@
             <th>Invoice #</th>
             <th>Date</th>
             <th class="text-end">Total Amount</th>
+            <th>Payment Method</th>
+            <th>Status</th>
             <th></th>
           </tr>
         </thead>
@@ -43,6 +45,8 @@
               <td><%= inv.invoiceId %></td>
               <td><%= inv.createdAt %></td>
               <td class="text-end">$<%= Number(inv.totalAmount).toFixed(2) %></td>
+              <td><%= inv.paymentMethod %></td>
+              <td><%= inv.paymentStatus %></td>
               <td class="text-end">
                 <a class="btn btn-sm btn-outline-primary" href="/invoice/<%= inv.invoiceId %>">
                   View Details

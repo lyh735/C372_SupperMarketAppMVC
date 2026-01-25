@@ -120,21 +120,29 @@ app.post('/paypal/checkout', checkAuthenticated, async (req, res) => {
     req.session.pendingCart = cartRows;
     req.session.cartTotal = total;
 
+    // Build return/cancel URLs from the current host to avoid session loss on redirects
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const returnUrl = `${baseUrl}/paypal/success`;
+    const cancelUrl = `${baseUrl}/paypal/cancel`;
+
     // Create PayPal order
-    paypal.createOrder(total.toFixed(2)).then(order => {
+    paypal.createOrder(total.toFixed(2), returnUrl, cancelUrl)
+    .then(order => {
       req.session.paypalOrderId = order.id;
       const approvalUrl = order.links.find(link => link.rel === 'approve').href;
       res.redirect(approvalUrl);
-    }).catch(err => {
-      console.error('Error creating PayPal order:', err);
-      req.flash('error', 'Error creating PayPal order');
-      res.redirect('/cart');
-    });
+    })
+      .catch(err => {
+        console.error('Error creating PayPal order:', err.response?.data || err.message);
+        req.flash('error', 'Error creating PayPal order');
+        res.redirect('/cart');
+      });
   });
 });
 
 app.get('/paypal/success', (req, res) => {
-  const orderId = req.session.paypalOrderId;
+  const orderId = req.query.token || req.session.paypalOrderId;
+
   if (!orderId) {
     req.flash('error', 'No PayPal order found');
     return res.redirect('/cart');
@@ -151,7 +159,7 @@ app.get('/paypal/success', (req, res) => {
         price: r.price
       }));
 
-      Invoice.createInvoice(userId, items, (invErr, result) => {
+      Invoice.createInvoice(userId, items, 'PayPal', 'completed', orderId, (invErr, result) => {
         if (invErr) {
           console.error('Error creating invoice:', invErr);
           req.flash('error', 'Could not complete checkout');
@@ -180,7 +188,7 @@ app.get('/paypal/success', (req, res) => {
             delete req.session.cartTotal;
             delete req.session.paypalOrderId;
             req.flash('success', 'Checkout successful');
-            res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+            return res.redirect(`/invoice/${result.invoiceId}`);
           });
         }).catch((e) => {
           console.error('Error during inventory update:', e);
@@ -189,7 +197,7 @@ app.get('/paypal/success', (req, res) => {
             delete req.session.cartTotal;
             delete req.session.paypalOrderId;
             req.flash('success', 'Checkout successful (inventory update pending)');
-            res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+            return res.redirect(`/invoice/${result.invoiceId}`);
           });
         });
       });
@@ -314,7 +322,7 @@ app.get("/nets-qr/success", (req, res) => {
         price: r.price
     }));
 
-    Invoice.createInvoice(userId, items, (invErr, result) => {
+    Invoice.createInvoice(userId, items, 'NETS', 'completed', null, (invErr, result) => {
         if (invErr) {
             console.error('Error creating invoice:', invErr);
             req.flash('error', 'Could not complete checkout');
@@ -342,7 +350,7 @@ app.get("/nets-qr/success", (req, res) => {
                 delete req.session.pendingCart;
                 delete req.session.cartTotal;
                 req.flash('success', 'Checkout successful');
-                res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+                return res.redirect(`/invoice/${result.invoiceId}`);
             });
         }).catch((e) => {
             console.error('Error during inventory update:', e);
@@ -350,7 +358,7 @@ app.get("/nets-qr/success", (req, res) => {
                 delete req.session.pendingCart;
                 delete req.session.cartTotal;
                 req.flash('success', 'Checkout successful (inventory update pending)');
-                res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!', invoiceId: result.invoiceId });
+                return res.redirect(`/invoice/${result.invoiceId}`);
             });
         });
     });

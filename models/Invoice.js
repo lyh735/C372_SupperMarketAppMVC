@@ -7,7 +7,7 @@ const Invoice = {
    * items: array of { productId, quantity, price }
    * callback(err, { invoiceId, totalAmount })
    */
-  createInvoice(userId, items, callback) {
+  createInvoice(userId, items, paymentMethod, paymentStatus, paymentRef, callback) {
     if (!userId) return callback(new Error('Missing userId'));
     if (!items || !items.length) return callback(new Error('No items to invoice'));
 
@@ -22,10 +22,10 @@ const Invoice = {
       if (txErr) return callback(txErr);
 
       const sqlInvoice = `
-        INSERT INTO invoices (userId, totalAmount, createdAt)
-        VALUES (?, ?, NOW())
+        INSERT INTO invoices (userId, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt, createdAt)
+        VALUES (?, ?, ?, ?, ?, NOW(), NOW())
       `;
-      db.query(sqlInvoice, [userId, totalAmount], (insErr, insRes) => {
+      db.query(sqlInvoice, [userId, totalAmount, paymentMethod, paymentStatus, paymentRef], (insErr, insRes) => {
         if (insErr) {
           return db.rollback(() => callback(insErr));
         }
@@ -62,11 +62,11 @@ const Invoice = {
 
   /**
    * Get an overview / history of invoices for one user.
-   * Returns [ { invoiceId, userId, createdAt, totalAmount }, ... ]
+   * Returns [ { invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt }, ... ]
    */
   invoiceOverview(userId, callback) {
     const sql = `
-      SELECT invoiceId, userId, createdAt, totalAmount
+      SELECT invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt
       FROM invoices
       WHERE userId = ?
       ORDER BY createdAt DESC
@@ -79,7 +79,7 @@ const Invoice = {
 
   /**
    * Get all invoices for admin view (all users).
-   * Returns rows: { invoiceId, userId, username, createdAt, totalAmount }
+   * Returns rows: { invoiceId, userId, username, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt }
    */
   allInvoices(callback) {
     const sql = `
@@ -88,7 +88,11 @@ const Invoice = {
         i.userId,
         u.username,
         i.createdAt,
-        i.totalAmount
+        i.totalAmount,
+        i.paymentMethod,
+        i.paymentStatus,
+        i.paymentRef,
+        i.paidAt
       FROM invoices i
       JOIN users u ON i.userId = u.id
       ORDER BY i.createdAt DESC
@@ -125,11 +129,11 @@ const Invoice = {
 
   /**
    * Get a single invoice by ID (admin can view any invoice).
-   * Returns: { invoiceId, userId, totalAmount, createdAt }
+   * Returns: { invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt }
    */
   getInvoiceById(invoiceId, callback) {
     const sql = `
-      SELECT invoiceId, userId, totalAmount, createdAt
+      SELECT invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt
       FROM invoices
       WHERE invoiceId = ?
     `;

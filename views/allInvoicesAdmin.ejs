@@ -55,6 +55,8 @@
               <th>User ID</th>
               <th>Date</th>
               <th>Total Amount</th>
+              <th>Payment Method</th>
+              <th>Payment Status</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -73,6 +75,8 @@
                     $<%= parseFloat(invoice.totalAmount).toFixed(2) %>
                   </span>
                 </td>
+                <td><%= invoice.paymentMethod %></td>
+                <td><%= invoice.paymentStatus %></td>
                 <td>
                   <a href="/invoice/<%= invoice.invoiceId %>" class="btn btn-sm btn-primary">View Details</a>
                 </td>

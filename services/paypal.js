@@ -15,16 +15,17 @@ async function getAccessToken() {
   return response.data.access_token;
 }
 
-async function createOrder(amount) {
+async function createOrder(amount, returnUrl, cancelUrl) {
   const accessToken = await getAccessToken();
   const response = await axios.post(`${PAYPAL_API}/v2/checkout/orders`, {
     intent: 'CAPTURE',
     purchase_units: [{
-      amount: {
-        currency_code: 'SGD',
-        value: amount
-      }
-    }]
+      amount: { currency_code: 'SGD', value: amount }
+    }],
+    application_context: {
+      return_url: returnUrl,
+      cancel_url: cancelUrl
+    }
   }, {
     headers: {
       'Content-Type': 'application/json',
