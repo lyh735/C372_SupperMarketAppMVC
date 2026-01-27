@@ -27,6 +27,7 @@
         const txnRetrievalRef = "<%= txnRetrievalRef %>"; // Transaction reference
         const courseInitId = "<%= courseInitId %>"; // Course Init ID
         const url = `/sse/payment-status/${txnRetrievalRef}`; 
+        console.log("NETS SSE init", { txnRetrievalRef, courseInitId, url });
    
         const headers = {
             "api-key": "<%= apiKey %>",
@@ -36,25 +37,38 @@
         console.log("NETS REQUEST response:", <%- JSON.stringify(fullNetsResponse) %>);
 
 
-        // Initialize EventSourcePolyfill with headers
-        s2sNetsTxnStatus = new EventSourcePolyfill(url, {
-            headers: headers,
-            heartbeatTimeout: 150000,
-        });
+        // Initialize EventSource with polyfill when available
+        if (typeof EventSourcePolyfill !== "undefined") {
+            s2sNetsTxnStatus = new EventSourcePolyfill(url, {
+                headers: headers,
+                heartbeatTimeout: 150000,
+            });
+        } else if (typeof EventSource !== "undefined") {
+            s2sNetsTxnStatus = new EventSource(url);
+        } else {
+            console.error("No EventSource support; SSE cannot start.");
+        }
+
+        if (s2sNetsTxnStatus) {
+            s2sNetsTxnStatus.onopen = () => console.log("SSE connection opened");
+            s2sNetsTxnStatus.onerror = (err) => console.error("SSE error", err);
+        }
 
         s2sNetsTxnStatus.addEventListener("message", (event) => {
-            const data = JSON.parse(event.data);
-            console.log("NETS Query Response:", data);
+        const payload = JSON.parse(event.data);
 
-            // Check for payment success
-            if (data.success) {
-                if (s2sNetsTxnStatus) s2sNetsTxnStatus.close();
-                window.location.href = `/nets-qr/success?txn_retrieval_ref=${txnRetrievalRef}`;
-            } else if (data.fail) {
-                if (s2sNetsTxnStatus) s2sNetsTxnStatus.close();
-                window.location.href = `/nets-qr/fail?txn_retrieval_ref=${txnRetrievalRef}`;
-            }
+        if (payload.success) {
+            s2sNetsTxnStatus.close();
+            window.location.href = "/nets-qr/success";
+        }
+
+        if (payload.fail) {
+            s2sNetsTxnStatus.close();
+            window.location.href = "/nets-qr/fail";
+        }
         });
+        
+
 
         console.log("Initialized EventSourcePolyfill");
 

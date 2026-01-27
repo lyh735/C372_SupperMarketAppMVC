@@ -1,39 +1,27 @@
-// This file to be removed for non-coursework use cases
+// Generates course_init_id.js (run once)
+// npm i uuid
+
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
-// Use dynamic import for ESM-only uuid
-let uuidv4;
-async function getUuidV4() {
-  if (!uuidv4) {
-    const uuid = await import('uuid');
-    uuidv4 = uuid.v4;
-  }
-  return uuidv4;
-}
+function generateCourseInitId() {
+  const outputPath = path.join(__dirname, 'course_init_id.js');
 
-async function generateCourseInitId() {
-  const courseInitIdFilePath = path.join(__dirname, 'course_init_id.js');
-  
-  if (fs.existsSync(courseInitIdFilePath)) {
-    console.log('✓ Course ID file already exists. Skipping creation.');
+  // If you want to overwrite every time, remove this block.
+  if (fs.existsSync(outputPath)) {
+    console.log('✓ course_init_id.js already exists. Skipping.');
     return;
   }
 
-  const uuidv4Func = await getUuidV4();
-  const courseInitId = uuidv4Func();
-  const fileContent = `// This file to be removed for non-coursework use cases
-export const courseInitId = '${courseInitId}';`;
+  const id = uuidv4();
+  const content = `// This file can be removed for non-coursework use cases
+const courseInitId = '${id}';
+module.exports = { courseInitId };
+`;
 
-  try {
-    fs.writeFileSync(courseInitIdFilePath, fileContent, { mode: 0o444 });
-    console.log(`✓ Course ID file created: ${courseInitId}`);
-    fs.chmodSync(courseInitIdFilePath, 0o444);
-  } catch (error) {
-    console.error('Error creating course ID file:', error.message);
-  }
+  fs.writeFileSync(outputPath, content, 'utf8');
+  console.log('✓ course_init_id.js created:', id);
 }
 
-(async () => {
-  await generateCourseInitId();
-})();
+generateCourseInitId();

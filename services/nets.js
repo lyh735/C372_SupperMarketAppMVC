@@ -87,3 +87,25 @@ exports.generateQrCode = async (req, res) => {
     res.redirect("/nets-qr/fail");
   }
 };
+
+exports.queryPaymentStatus = async (txnRetrievalRef, courseInitId) => {
+  const requestBody = {
+    txn_retrieval_ref: txnRetrievalRef,
+  };
+  if (courseInitId) {
+    requestBody.course_init_id = courseInitId;
+  }
+
+  const response = await axios.post(
+    `https://sandbox.nets.openapipaas.com/api/v1/common/payments/nets-qr/query`,
+    requestBody,
+    {
+      headers: {
+        "api-key": process.env.API_KEY,
+        "project-id": process.env.PROJECT_ID,
+      },
+    }
+  );
+
+  return response.data;
+};

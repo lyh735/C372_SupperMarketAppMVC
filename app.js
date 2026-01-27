@@ -14,6 +14,7 @@ const paypal = require('./services/paypal');
 const CartItem = require('./models/CartItem');
 const Invoice = require('./models/Invoice');
 const Product = require('./models/Product');
+const axios = require('axios');
 
 const app = express();
 
@@ -300,8 +301,58 @@ app.get(
 );
 
 // NETS QR route
-app.get("/", (req, res) => { res.render("shopping") })
-app.post('/generateNETSQR', netsQr.generateQrCode);
+app.get('/sse/payment-status/:txnRetrievalRef', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  res.flushHeaders();
+
+  const txnRetrievalRef = req.params.txnRetrievalRef;
+
+  const interval = setInterval(async () => {
+    const response = await axios.post(
+      'https://sandbox.nets.openapipaas.com/api/v1/common/payments/nets-qr/query',
+      { txn_retrieval_ref: txnRetrievalRef, frontend_timeout_status: 0 },
+      {
+        headers: {
+          'api-key': process.env.API_KEY,
+          'project-id': process.env.PROJECT_ID,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const data = response.data?.result?.data;   // use this exact path
+    console.log("NETS QUERY:", data);
+
+    // always send progress
+    res.write(`data: ${JSON.stringify({ progress: true, data })}\n\n`);
+
+    // success
+    if (data?.response_code === "00" && data?.txn_status === 1) {
+      console.log("SSE: sending success=true and closing");
+      res.write(`data: ${JSON.stringify({ success: true })}\n\n`);
+      clearInterval(interval);
+      res.end();
+    }
+
+    // fail
+    if (data?.txn_status === 2) {
+      console.log("SSE: sending fail=true and closing");
+      res.write(`data: ${JSON.stringify({ fail: true, data })}\n\n`);
+      clearInterval(interval);
+      res.end();
+    }
+  }, 5000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
+});
+
+
 app.get("/nets-qr/success", (req, res) => {
     const user = req.session.user;
     if (!user) {
@@ -350,7 +401,7 @@ app.get("/nets-qr/success", (req, res) => {
                 delete req.session.pendingCart;
                 delete req.session.cartTotal;
                 req.flash('success', 'Checkout successful');
-                return res.redirect(`/invoice/${result.invoiceId}`);
+                return res.render('netsTxnSuccessStatus', { message: 'Transaction Successful', invoiceId: result.invoiceId });
             });
         }).catch((e) => {
             console.error('Error during inventory update:', e);
@@ -358,7 +409,7 @@ app.get("/nets-qr/success", (req, res) => {
                 delete req.session.pendingCart;
                 delete req.session.cartTotal;
                 req.flash('success', 'Checkout successful (inventory update pending)');
-                return res.redirect(`/invoice/${result.invoiceId}`);
+                return res.render('netsTxnSuccessStatus', { message: 'Transaction Successful', invoiceId: result.invoiceId });
             });
         });
     });
