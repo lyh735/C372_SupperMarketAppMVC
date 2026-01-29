@@ -3,6 +3,7 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const CartItemsController = require('./controllers/CartItermsController');
+const CheckoutController = require('./controllers/CheckoutController');
 const InvoiceController = require('./controllers/InvoiceController');
 const ProductController = require('./controllers/ProductController');
 const ShoppingController = require('./controllers/ShoppingController');
@@ -87,6 +88,8 @@ app.post('/cart/increase', checkAuthenticated, CartItemsController.increase);
 app.post('/cart/decrease', checkAuthenticated, CartItemsController.decrease);
 app.post('/cart/remove', checkAuthenticated, CartItemsController.remove);
 app.post('/cart/clear', checkAuthenticated, CartItemsController.clear);
+
+// Checkout route using CartItemsController (NETS QR)
 app.post('/cart/checkout', checkAuthenticated, CartItemsController.checkout);
 
 // PayPal routes
