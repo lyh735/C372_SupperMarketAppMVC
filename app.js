@@ -36,6 +36,8 @@ app.use(express.static('public'));
 app.use(express.urlencoded({
     extended: false
 }));
+// enable JSON body parsing (for PayPal JS SDK endpoints)
+app.use(express.json());
 
 // Session + flash
 app.use(session({
@@ -85,6 +87,7 @@ app.get('/product/:id', checkAuthenticated, ShoppingController.getProduct);
 
 // Cart operations handled by CartItemsController
 app.get('/cart', checkAuthenticated, CartItemsController.list);
+app.get('/checkout', checkAuthenticated, CartItemsController.checkoutOptions);
 app.post('/add-to-cart/:id', checkAuthenticated, CartItemsController.add);
 app.post('/cart/increase', checkAuthenticated, CartItemsController.increase);
 app.post('/cart/decrease', checkAuthenticated, CartItemsController.decrease);
@@ -144,6 +147,106 @@ app.post('/paypal/checkout', checkAuthenticated, async (req, res) => {
         res.redirect('/cart');
       });
   });
+});
+
+// PayPal JS SDK flow
+app.post('/api/paypal/create-order', checkAuthenticated, async (req, res) => {
+  try {
+    const amount = req.body?.amount || req.session.cartTotal;
+    if (!amount) {
+      return res.status(400).json({ error: 'Missing amount' });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const returnUrl = `${baseUrl}/paypal/success`;
+    const cancelUrl = `${baseUrl}/paypal/cancel`;
+
+    const order = await paypal.createOrder(Number(amount).toFixed(2), returnUrl, cancelUrl);
+    return res.json({ id: order.id });
+  } catch (err) {
+    console.error('Error creating PayPal order:', err.response?.data || err.message);
+    return res.status(500).json({ error: 'Error creating PayPal order' });
+  }
+});
+
+app.post('/api/paypal/capture-order', checkAuthenticated, async (req, res) => {
+  try {
+    const orderId = req.body?.orderID;
+    if (!orderId) {
+      return res.status(400).json({ error: 'Missing orderID' });
+    }
+
+    const capture = await paypal.captureOrder(orderId);
+    if (capture.status !== 'COMPLETED') {
+      return res.status(400).json({ error: 'Payment not completed', status: capture.status });
+    }
+
+    const user = req.session.user;
+    const userId = user.userId || user.id;
+    const pendingCart = req.session.pendingCart;
+
+    if (!pendingCart || !pendingCart.length) {
+      return res.status(400).json({ error: 'No pending cart found' });
+    }
+
+    const items = pendingCart.map(r => ({
+      productId: r.productId,
+      quantity: r.quantity,
+      price: r.price
+    }));
+
+    const captureId = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+    const paymentRef = captureId || orderId;
+
+    Invoice.createInvoice(userId, items, 'PayPal', 'completed', paymentRef, (invErr, result) => {
+      if (invErr) {
+        console.error('Error creating invoice:', invErr);
+        return res.status(500).json({ error: 'Could not complete checkout' });
+      }
+
+      const decrementPromises = items.map(item =>
+        new Promise((resolve) => {
+          Product.decrementQuantity(item.productId, item.quantity, (decErr) => {
+            if (decErr) {
+              console.error(`Error decrementing quantity for product ${item.productId}:`, decErr);
+            }
+            resolve();
+          });
+        })
+      );
+
+      Promise.all(decrementPromises).then(() => {
+        CartItem.clear(userId, (clearErr) => {
+          if (clearErr) {
+            console.error('Error clearing cart after checkout:', clearErr);
+          }
+          delete req.session.pendingCart;
+          delete req.session.cartTotal;
+          delete req.session.paypalOrderId;
+          return res.json({ success: true, status: capture.status, invoiceId: result.invoiceId });
+        });
+      }).catch((e) => {
+        console.error('Error during inventory update:', e);
+        CartItem.clear(userId, () => {
+          delete req.session.pendingCart;
+          delete req.session.cartTotal;
+          delete req.session.paypalOrderId;
+          return res.json({ success: true, status: capture.status, invoiceId: result.invoiceId });
+        });
+      });
+    });
+  } catch (err) {
+    console.error('Error capturing PayPal order:', err.response?.data || err.message);
+    return res.status(500).json({ error: 'Error processing payment' });
+  }
+});
+
+app.get('/paypal/success-page/:invoiceId', checkAuthenticated, (req, res) => {
+  const invoiceId = parseInt(req.params.invoiceId, 10);
+  if (!invoiceId) {
+    return res.redirect('/invoices');
+  }
+  return res.render('paypalSuccess', { invoiceId });
 });
 
 app.get('/paypal/success', (req, res) => {

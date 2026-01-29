@@ -316,6 +316,46 @@ const CartItemsController = {
       netsQr.generateQrCode(req, res);
     });
   }
+  ,
+
+  // Checkout options page (choose NETS or PayPal)
+  checkoutOptions(req, res) {
+    const user = req.session ? req.session.user : null;
+    if (!user) {
+      req.flash('error', 'Please log in to checkout');
+      return res.redirect('/login');
+    }
+    if (user.role && String(user.role).toLowerCase() === 'admin') {
+      req.flash('error', 'Admins cannot perform checkouts. Use inventory management.');
+      return res.redirect('/inventory');
+    }
+
+    const userId = user.userId || user.id;
+
+    CartItems.getByUserId(userId, (err, cartRows) => {
+      if (err) {
+        console.error('Error fetching cart for checkout options:', err);
+        req.flash('error', 'Server error during checkout');
+        return res.redirect('/cart');
+      }
+
+      if (!cartRows || !cartRows.length) {
+        req.flash('error', 'Your cart is empty');
+        return res.redirect('/cart');
+      }
+
+      const total = cartRows.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      // Store pending cart for PayPal button flow
+      req.session.pendingCart = cartRows;
+      req.session.cartTotal = total;
+      return res.render('checkout', {
+        cart: cartRows,
+        total,
+        paypalClientId: process.env.PAYPAL_CLIENT_ID || '',
+        user: req.session.user
+      });
+    });
+  }
 };
 
 module.exports = CartItemsController;

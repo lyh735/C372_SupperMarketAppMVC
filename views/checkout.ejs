@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://www.paypal.com/sdk/js?client-id=<%= paypalClientId %>&currency=SGD"></script>
+  <style>
+    .checkout-card {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .paypal-btn {
+      background: #ffc439;
+      color: #003087;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 6px;
+      width: 100%;
+    }
+    .paypal-btn:hover {
+      background: #ffb319;
+    }
+    .card-btn {
+      background: #2c2f33;
+      color: #ffffff;
+      font-weight: 600;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 6px;
+      width: 100%;
+    }
+    .btn-caption {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Supermarket App</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/shopping">Shop</a></li>
+          <li class="nav-item"><a class="nav-link" href="/cart">View Cart</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <h2 class="text-center mb-3">Checkout</h2>
+    <div class="card checkout-card">
+      <div class="card-body">
+        <p class="mb-3 text-center">
+          Total payable: <strong>$<span id="cartTotal"><%= Number(total).toFixed(2) %></span></strong>
+        </p>
+
+        <!-- PayPal related code -->
+        <div id="paypal-button-container" class="mb-3"></div>
+
+        <form action="/cart/checkout" method="POST" class="mb-2">
+          <button type="submit" class="card-btn">Pay with NETS</button>
+        </form>
+
+        <div class="text-center btn-caption">
+          Payment is powered by PayPal
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <a href="/cart" class="btn btn-secondary">Back to Cart</a>
+    </div>
+  </div>
+  <script>
+    const cart = <%- JSON.stringify(cart || []) %>;
+    const amount = document.getElementById('cartTotal').innerText;
+
+    function renderPaypalButtons() {
+      paypal.Buttons({
+        createOrder: function () {
+          return fetch('/api/paypal/create-order', {
+            method: 'post',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ amount })
+          })
+            .then(res => res.json())
+            .then(data => data.id);
+        },
+        onApprove: function (data) {
+          return fetch('/api/paypal/capture-order', {
+            method: 'post',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ orderID: data.orderID })
+          })
+            .then(res => res.json())
+            .then(details => {
+              if (details.status === 'COMPLETED' || details.success) {
+                if (details.invoiceId) {
+                  window.location.href = '/paypal/success-page/' + details.invoiceId;
+                } else {
+                  window.location.href = '/invoices';
+                }
+              } else {
+                alert(details.error || 'Payment not completed.');
+              }
+            });
+        },
+        onClick: function (data, actions) {
+          if (!cart.length) {
+            alert('Your cart is empty. Please add items before paying.');
+            return actions.reject();
+          }
+          return actions.resolve();
+        }
+      }).render('#paypal-button-container');
+    }
+
+    if (cart.length && window.paypal) {
+      renderPaypalButtons();
+    } else {
+      const el = document.getElementById('paypal-button-container');
+      if (el) el.style.display = 'none';
+    }
+  </script>
+  <%- include('partials/footer') %>
+</body>
+</html>
