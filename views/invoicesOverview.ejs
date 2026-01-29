@@ -36,6 +36,7 @@
             <th class="text-end">Total Amount</th>
             <th>Payment Method</th>
             <th>Status</th>
+            <th>Refund</th>
             <th></th>
           </tr>
         </thead>
@@ -47,6 +48,7 @@
               <td class="text-end">$<%= Number(inv.totalAmount).toFixed(2) %></td>
               <td><%= inv.paymentMethod %></td>
               <td><%= inv.paymentStatus %></td>
+              <td><%= inv.refundStatus || 'not_refunded' %></td>
               <td class="text-end">
                 <a class="btn btn-sm btn-outline-primary" href="/invoice/<%= inv.invoiceId %>">
                   View Details

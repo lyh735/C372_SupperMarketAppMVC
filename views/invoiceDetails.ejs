@@ -27,6 +27,7 @@
     <p><strong>Total Amount:</strong> $<%= Number(invoice.totalAmount).toFixed(2) %></p>
     <p><strong>Payment Method:</strong> <%= invoice.paymentMethod %></p>
     <p><strong>Payment Status:</strong> <%= invoice.paymentStatus %></p>
+    <p><strong>Refund Status:</strong> <%= invoice.refundStatus || 'not_refunded' %></p>
     <% if (invoice.paymentRef) { %>
       <p><strong>Payment Reference:</strong> <%= invoice.paymentRef %></p>
     <% } %>
@@ -65,6 +66,21 @@
           <% }); %>
         </tbody>
       </table>
+    <% } %>
+
+    <h4 class="mt-4">Refund</h4>
+    <% if (invoice.paymentStatus === 'completed' && invoice.refundStatus !== 'refunded') { %>
+      <form method="POST" action="/refund/<%= invoice.invoiceId %>">
+        <div class="mb-3">
+          <label for="reason" class="form-label">Reason for refund</label>
+          <textarea id="reason" name="reason" class="form-control" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger">Request Refund</button>
+      </form>
+    <% } else if (invoice.refundStatus === 'refunded') { %>
+      <div class="alert alert-info">This invoice has already been refunded.</div>
+    <% } else { %>
+      <div class="alert alert-warning">Refunds are only available for completed payments.</div>
     <% } %>
 
     <a href="/shopping" class="btn btn-primary mt-3">Continue Shopping</a>

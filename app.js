@@ -6,6 +6,8 @@ const CartItemsController = require('./controllers/CartItermsController');
 const CheckoutController = require('./controllers/CheckoutController');
 const InvoiceController = require('./controllers/InvoiceController');
 const ProductController = require('./controllers/ProductController');
+const RefundController = require('./controllers/RefundController');
+const PaymentController = require('./controllers/PaymentController');
 const ShoppingController = require('./controllers/ShoppingController');
 const UserController = require('./controllers/UserController');
 const FeedbackController = require('./controllers/FeedbackController');
@@ -163,7 +165,10 @@ app.get('/paypal/success', (req, res) => {
         price: r.price
       }));
 
-      Invoice.createInvoice(userId, items, 'PayPal', 'completed', orderId, (invErr, result) => {
+      const captureId = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      const paymentRef = captureId || orderId;
+
+      Invoice.createInvoice(userId, items, 'PayPal', 'completed', paymentRef, (invErr, result) => {
         if (invErr) {
           console.error('Error creating invoice:', invErr);
           req.flash('error', 'Could not complete checkout');
@@ -228,6 +233,11 @@ app.get('/paypal/cancel', (req, res) => {
 app.get('/invoices', checkAuthenticated, InvoiceController.listUserInvoices);
 app.get('/all-invoices', checkAuthenticated, InvoiceController.listAllInvoices);
 app.get('/invoice/:id', checkAuthenticated, InvoiceController.showInvoice);
+
+// Refund route
+app.post('/refund/:invoiceId', checkAuthenticated, RefundController.refundInvoice);
+// Payment route
+app.get('/payments/invoice/:invoiceId', checkAuthenticated, PaymentController.getPaymentByInvoice);
 
 // Feedback routes
 app.get('/feedback', checkAuthenticated, FeedbackController.listAllProducts);

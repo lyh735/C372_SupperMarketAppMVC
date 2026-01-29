@@ -62,11 +62,11 @@ const Invoice = {
 
   /**
    * Get an overview / history of invoices for one user.
-   * Returns [ { invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt }, ... ]
+   * Returns [ { invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt, refundStatus }, ... ]
    */
   invoiceOverview(userId, callback) {
     const sql = `
-      SELECT invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt
+      SELECT invoiceId, userId, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt, refundStatus
       FROM invoices
       WHERE userId = ?
       ORDER BY createdAt DESC
@@ -79,7 +79,7 @@ const Invoice = {
 
   /**
    * Get all invoices for admin view (all users).
-   * Returns rows: { invoiceId, userId, username, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt }
+   * Returns rows: { invoiceId, userId, username, createdAt, totalAmount, paymentMethod, paymentStatus, paymentRef, paidAt, refundStatus }
    */
   allInvoices(callback) {
     const sql = `
@@ -92,7 +92,8 @@ const Invoice = {
         i.paymentMethod,
         i.paymentStatus,
         i.paymentRef,
-        i.paidAt
+        i.paidAt,
+        i.refundStatus
       FROM invoices i
       JOIN users u ON i.userId = u.id
       ORDER BY i.createdAt DESC
@@ -129,11 +130,11 @@ const Invoice = {
 
   /**
    * Get a single invoice by ID (admin can view any invoice).
-   * Returns: { invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt }
+   * Returns: { invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt, refundStatus }
    */
   getInvoiceById(invoiceId, callback) {
     const sql = `
-      SELECT invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt
+      SELECT invoiceId, userId, totalAmount, createdAt, paymentMethod, paymentStatus, paymentRef, paidAt, refundStatus
       FROM invoices
       WHERE invoiceId = ?
     `;
