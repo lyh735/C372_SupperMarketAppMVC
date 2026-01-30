@@ -73,7 +73,9 @@ const InvoiceController = {
         res.render('invoiceDetails', {
           invoice,
           items: items || [],
-          user
+          user,
+          refund: req.query ? req.query.refund : null,
+          refundMsg: req.query ? req.query.refundMsg : null
         });
       });
     });

@@ -22,6 +22,15 @@
   </nav>
 
   <div class="container mt-4">
+    <% if (refund === 'fail') { %>
+      <div class="alert alert-danger">
+        <%= refundMsg || 'Refund request failed. Please try again.' %>
+      </div>
+    <% } else if (refund === 'success') { %>
+      <div class="alert alert-success">
+        <%= refundMsg || 'Refund processed successfully.' %>
+      </div>
+    <% } %>
     <h2>Invoice #<%= invoice.invoiceId %></h2>
     <p><strong>Date:</strong> <%= invoice.createdAt %></p>
     <p><strong>Total Amount:</strong> $<%= Number(invoice.totalAmount).toFixed(2) %></p>
@@ -69,7 +78,8 @@
     <% } %>
 
     <h4 class="mt-4">Refund</h4>
-    <% if (invoice.paymentStatus === 'completed' && invoice.refundStatus !== 'refunded') { %>
+    <% const isNetsPayment = (invoice.paymentMethod || '').toLowerCase() === 'nets'; %>
+    <% if (!isNetsPayment && invoice.paymentStatus === 'completed' && invoice.refundStatus !== 'refunded') { %>
       <form method="POST" action="/refund/<%= invoice.invoiceId %>">
         <div class="mb-3">
           <label for="reason" class="form-label">Reason for refund</label>
@@ -79,6 +89,8 @@
       </form>
     <% } else if (invoice.refundStatus === 'refunded') { %>
       <div class="alert alert-info">This invoice has already been refunded.</div>
+    <% } else if (isNetsPayment) { %>
+      <div class="alert alert-warning">Refunds are not available for NETS payments.</div>
     <% } else { %>
       <div class="alert alert-warning">Refunds are only available for completed payments.</div>
     <% } %>
